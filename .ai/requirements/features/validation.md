@@ -22,7 +22,7 @@ Exit code 0 when everything passes, non-zero otherwise; every failure is printed
 Rationale (decided 2026-11-09):
 
 - Most checks in §4 are **cross-field and cross-file** logic (period overlap, tier references, alias uniqueness across members) — declarative schema languages like JSON Schema express only structure, which is a minority of the rules.
-- Error messages must name member, field, and file (§5) — hand-written checks produce these directly; schema-validator errors would need a translation layer.
+- Error messages must name file, location, and reason (§2) — hand-written checks produce these directly; schema-validator errors would need a translation layer.
 - No new dependency (`jsonschema`); dataclasses + PyYAML + stdlib suffice.
 - **No drift**: a schema file plus Python cross-checks would be two canonical schemas. The dataclasses are the single internal model that `generate-dues` and `import` also operate on — `validate` is the front door to the same code, not a bolt-on.
 - Each check function maps 1:1 to a rule in §4 and becomes a named test (per the testing strategy in AGENTS.md).
@@ -49,8 +49,24 @@ Rationale (decided 2026-11-09):
 
 ## 6. Acceptance Criteria
 
-- A member referencing an undefined tier fails with a message naming member, tier, and file.
-- Overlapping `membership` periods fail, naming the member and the conflicting periods.
-- An alias key with no matching member ID fails.
-- A journal with an unbalanced transaction fails via `hledger check`.
+General:
+
 - A clean example repository (built from the `*.example.yaml` files) passes with exit code 0.
+- All failures are reported in a single run (no fail-fast on the first error); each message names file, location, and reason; exit code is non-zero.
+
+`members.yaml`:
+
+- A member referencing an undefined tier fails, naming member, tier, and file.
+- Overlapping `membership` periods fail, naming the member and the conflicting periods.
+- Non-ascending `effective` entries fail — both in `fee_tiers` and in a member's `tiers`.
+- Overlapping `fee_overrides` on the same member fail; an override with `start > end` fails.
+- A negative amount (in `fee_tiers` or `fee_overrides`) fails; zero passes.
+- A malformed date or an unquoted float amount fails with a type-level message.
+
+Other files:
+
+- An alias key with no matching member ID fails; the same alias string under two different members fails.
+- A `categorization.yaml` rule with an uncompilable regex fails.
+- A `bank_formats.yaml` mapping naming an unknown parser adapter, or missing a required internal field, fails.
+- A `steward.yaml` with an unknown key or an out-of-domain value (`journal_granularity`, `dues.proration`, `closing.*`) fails.
+- A journal with an unbalanced transaction fails via `hledger check`.
