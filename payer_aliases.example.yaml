@@ -1,0 +1,11 @@
+# Maps payer names found in bank transactions to member IDs.
+# Aliases map PAYERS, not just members: a third party paying on a
+# member's behalf (e.g. a parent or spouse) is added to that member's
+# list. Keys must reference member IDs from members.yaml.
+# Matching is case-insensitive and ignores extra whitespace.
+aliases:
+  "1001":
+    - "John Doe"
+    - "J. Doe"
+    - "Doe, John"
+    - "Jane Doe"        # third-party payer (spouse) paying for 1001

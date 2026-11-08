@@ -1,0 +1,54 @@
+# PRD: Bank Statement Import
+
+> **Status:** Phase 1, specified — not yet implemented.
+> Canonical schemas: [../../docs/architecture.md](../../docs/architecture.md) §3.3 (payer matching), §3.4 (categorization), §3.5 (bank formats), §5.2 (posting model), §6 (write path), §7.2 (dedup).
+
+## 1. Purpose
+
+Import bank statement exports into the journals without duplicates (even across overlapping re-exports), clearing member dues receivables where confidently matched and categorizing other rows where possible — flagging everything uncertain for manual review instead of asking interactively.
+
+## 2. Command
+
+```
+steward import <bank-export> --format <mapping> [--dry-run]
+```
+
+## 3. Inputs
+
+- The bank export file (CSV dialect described by the named mapping).
+- `bank_formats.yaml` — column mapping, parser options, date/number formats, `reference_pattern` (§3.5).
+- `payer_aliases.yaml` — payer → member matching (§3.3).
+- `categorization.yaml` — ordered regex → account rules for non-member rows (§3.4).
+- `journals/` — existing `import-hash` tags (dedup) and receivable balances (confidence check), read via hledger.
+
+## 4. Behavior
+
+1. **Parse** through the named format mapping into the internal transaction model: `date` (booking date, never value date), `amount` (signed `Decimal`), `currency`, `payee`, `description`, `reference`, `account`. Parsers must not assume row order.
+2. **Sort** rows by date (presentation normalization for human-readable journals; not correctness).
+3. **Deduplicate.** Compute `SHA-256(account | date | amount | payee | description-or-reference)` per row (normalization rules in §7.2; a stable end-to-end `reference` replaces `description` when extracted). Drop rows whose fingerprint already appears as an `; import-hash:` tag.
+4. **Match & categorize** each surviving row:
+   - Payer matches exactly one member alias **and** amount equals that member's total outstanding dues receivable → high confidence: book the clearing posting (§5.2) with `member-id` tag.
+   - Otherwise → still import, flagged `; review: unmatched | ambiguous | partial | overpaid` (§3.3 table).
+   - Non-member rows → first-match-wins against `categorization.yaml`; no match → suspense account (`expenses:unknown` / `income:unknown`) + `; review: uncategorized`.
+5. **Render** through the `hledger import` write path (§6), grouped by posting month.
+6. **Report** to stdout: imported count, dropped duplicates, and every flagged row with its `review:` reason.
+
+## 5. Edge Cases
+
+| Case | Behavior |
+|------|----------|
+| Overlapping re-export (same rows, new filename/order) | All duplicates dropped; nothing appended |
+| Bank rewords descriptions between exports | Rows with a stable end-to-end reference still dedup; others may duplicate → manual resolution (known limitation, §7.2) |
+| Installment payment (amount < receivable) | Partial clearing booked, flagged `review: partial` |
+| Overpayment (amount > receivable) | Flagged `review: overpaid`; treasurer decides donation / next period / refund |
+| Third-party payer | `review: unmatched` until the payer is added to the member's aliases |
+| Early payment of next year's dues | Clears the total balance into credit; absorbed by the next accrual (no period mapping, decision #7) |
+| Transfer between two own accounts | `account` in the fingerprint prevents collision |
+
+## 6. Acceptance Criteria
+
+- Re-importing the same file: zero new transactions, report shows all rows as duplicates.
+- A row whose payer alias matches and whose amount equals the member's receivable gets a `member-id` tag and a receivable-clearing posting, no `review:` tag.
+- An unknown payer lands in a suspense account with `review: uncategorized` or `review: unmatched` and appears in the report.
+- `--dry-run` prints the transactions and writes nothing.
+- After a real run, `hledger check` passes (write-path gate).

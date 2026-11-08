@@ -1,0 +1,53 @@
+# Global fee tiers (effective-dated price lists)
+fee_tiers:
+  regular:
+    - effective: "2020-01-01"
+      amount: "515.00"
+    - effective: "2025-01-01"  # General fee increase starting 2025
+      amount: "600.00"
+  reduced:
+    - effective: "2020-01-01"
+      amount: "343.33"
+    - effective: "2025-01-01"
+      amount: "400.00"
+
+members:
+  - id: "1001" # the membership id, must be unique and is never reused
+    name: "John Doe" # canonical name for this member
+    # Effective-dated tier history; each tier must be defined under `fee_tiers`.
+    # The first entry should match the first `joined` date.
+    tiers:
+      - effective: "2022-01-01"
+        tier: "regular"
+    # Periods of active membership
+    membership:
+      - joined: "2022-01-01"
+        left: null # still active, this line is optional
+
+  - id: "1002"
+    name: "Jane Doe"
+    tiers:
+      - effective: "2023-05-15"
+        tier: "reduced"
+    membership:
+      - joined: "2023-05-15"
+        left: "2025-12-31"    # Left the association
+
+  - id: "1003"
+    name: "Alex Smith"
+    # Tier change mid-membership: joined as regular, switched to reduced
+    # effective 2025-07-01 (e.g. became a student)
+    tiers:
+      - effective: "2024-01-01"
+        tier: "regular"
+      - effective: "2025-07-01"
+        tier: "reduced"
+    membership:
+      - joined: "2024-01-01"
+        left: null
+    # Individual exception / custom pricing history
+    fee_overrides:
+      - start: "2025-01-01"
+        end: "2025-12-31"
+        amount: "0.00"         # 100% exemption for 2025 (e.g., student waiver)
+        reason: "Board approval 2024-11-15"
