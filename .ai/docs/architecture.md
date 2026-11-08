@@ -121,6 +121,7 @@ Rules:
 - All amounts are **quoted decimal strings**, never YAML floats, to avoid binary floating-point artifacts (e.g. `343.33`). They are parsed as `Decimal`.
 - `id` values are unique across all members, forever — IDs of departed members are never reused.
 - The `membership` periods of one member must not overlap.
+- `fee_tiers` entries per tier are ascending by `effective`; the applicable rate for a date is the latest entry with `effective <= date`.
 - `tiers` is an effective-dated history, symmetric with `fee_tiers`: entries are ascending by `effective`, and the applicable tier for a date is the latest entry with `effective <= date`. A member switching from `regular` to `reduced` gets a new entry; past entries are never edited, so historical recalculations stay stable.
 - Rate resolution for an accrual date: active `fee_overrides` entry → member's applicable `tiers` entry → latest `fee_tiers` entry for that tier with `effective <= accrual date`.
 - **Mid-year tier changes** compose with proration (§3.1): the year is split at each tier-boundary date, each segment is prorated by the configured policy with its segment's annual rate, the segments are summed, and the total is rounded half-up to cents. Example (`monthly` proration): member switches `regular` (€120/yr) → `reduced` (€60/yr) effective 2026-07-01 → 6/12 × €120 + 6/12 × €60 = €90.00.

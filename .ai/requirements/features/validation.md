@@ -31,7 +31,7 @@ Rationale (decided 2026-11-09):
 
 ### 4.1 Schema & referential integrity (Steward)
 
-- `members.yaml`: unique member IDs (never reused); `tiers` entries reference defined `fee_tiers` keys and are ascending by `effective`; `membership` periods of one member do not overlap; `fee_overrides` have `start <= end`; all dates ISO `YYYY-MM-DD`; all amounts quoted decimal strings.
+- `members.yaml`: unique member IDs (never reused); `fee_tiers` entries per tier are ascending by `effective`; `tiers` entries reference defined `fee_tiers` keys and are ascending by `effective`; `membership` periods of one member do not overlap; `fee_overrides` have `start <= end`; all dates ISO `YYYY-MM-DD`; all amounts quoted decimal strings.
 - `payer_aliases.yaml`: every key references an existing member ID; no alias string assigned to two different members.
 - `categorization.yaml`: every rule's `account` is well-formed; regexes compile.
 - `bank_formats.yaml`: every mapping names a known parser adapter and maps all required internal fields (`date`, `amount`, `payee`, `description`, `account`); when a sample export is available, the mapping parses it without errors.
