@@ -118,7 +118,7 @@ members:
 Rules:
 
 - All dates are quoted ISO `YYYY-MM-DD` strings.
-- All amounts are **quoted decimal strings**, never YAML floats, to avoid binary floating-point artifacts (e.g. `343.33`). They are parsed as `Decimal`.
+- All amounts are **quoted decimal strings**, never YAML floats, to avoid binary floating-point artifacts (e.g. `343.33`). They are parsed as `Decimal` and must be **non-negative** (zero allowed, e.g. a full waiver; negative amounts are rejected by `steward validate`).
 - `id` values are unique across all members, forever — IDs of departed members are never reused.
 - The `membership` periods of one member must not overlap.
 - `fee_tiers` entries per tier are ascending by `effective`; the applicable rate for a date is the latest entry with `effective <= date`.
