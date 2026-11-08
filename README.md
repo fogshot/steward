@@ -72,7 +72,7 @@ reduced:
 
 ### Individual exceptions & adjustments
 
-Use `fee_overrides` for a specific member. Steward checks for an active override for the target date before falling back to the tier rate. Override amounts are absolute and are not prorated:
+Use `fee_overrides` for a specific member. Steward checks for an active override for the target date before falling back to the tier rate. Override amounts are annual rates, prorated over their active window — an override covering only part of a year applies only to that part:
 
 ```yaml
 fee_overrides:

@@ -124,13 +124,16 @@ Rules:
 - `fee_tiers` entries per tier are ascending by `effective`; the applicable rate for a date is the latest entry with `effective <= date`.
 - `tiers` is an effective-dated history, symmetric with `fee_tiers`: entries are ascending by `effective`, and the applicable tier for a date is the latest entry with `effective <= date`. A member switching from `regular` to `reduced` gets a new entry; past entries are never edited, so historical recalculations stay stable.
 - Rate resolution for an accrual date: active `fee_overrides` entry → member's applicable `tiers` entry → latest `fee_tiers` entry for that tier with `effective <= accrual date`.
-- **Mid-year tier changes** compose with proration (§3.1): the year is split at each tier-boundary date, each segment is prorated by the configured policy with its segment's annual rate, the segments are summed, and the total is rounded half-up to cents. Example (`monthly` proration): member switches `regular` (€120/yr) → `reduced` (€60/yr) effective 2026-07-01 → 6/12 × €120 + 6/12 × €60 = €90.00.
+- **All amounts are annual rates**, including `fee_overrides` amounts. The reference period for dues is one year; there is no per-month rate unit (decision #11 in the HLD).
+- **Segment model** — the year's dues are computed by splitting the year at every boundary date — join/leave, tier changes, override start/end — and prorating each segment at its applicable annual rate by the configured policy; segments are summed and the total is rounded half-up to cents once. Examples (`monthly` proration):
+  - Tier change: `regular` (€120/yr) → `reduced` (€60/yr) effective 2026-07-01 → 6/12 × €120 + 6/12 × €60 = €90.00.
+  - Partial override: €60/yr override covering Jan–Mar, `regular` €120/yr otherwise → 3/12 × €60 + 9/12 × €120 = €105.00.
 - **Proration** for partial years is governed by `dues.proration` in `steward.yaml` (§3.1):
   - `monthly` (default): liability is counted in whole calendar months. Joining on any day in April makes April liable → 8/12 of the annual fee; leaving in June makes the member liable through June → 6/12.
   - `daily`: exact liable days / days in year.
   - `none`: full annual fee regardless of join/leave date (statutes with "full fee on entry" clauses).
-  - The prorated amount is rounded half-up to cents. `fee_overrides` amounts are absolute and are **not** prorated.
   - The policy is global by design: it encodes the association's statutes, not a property of a fee tier. If a real requirement for per-tier policies ever appears, an optional `proration` key on a tier can override the global default without breaking the schema.
+- **`fee_overrides`** entries are annual rates prorated over their active window (`start`–`end`, inclusive) via the segment model — they are not lump sums, and not prorated beyond their window. A full-year waiver (`amount: "0.00"` covering the whole year) therefore yields dues of €0. Overlapping overrides on the same member are invalid (rejected by `steward validate`).
 
 ### 3.3 `payer_aliases.yaml` — bank payer matching
 

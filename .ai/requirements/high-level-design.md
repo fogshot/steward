@@ -42,7 +42,7 @@ All membership-related data is modeled as time ranges, so a single `members.yaml
 - **Fee tiers** are effective-dated price lists (e.g. `regular` costs 100.00 from 2020-01-01, 120.00 from 2026-01-01).
 - **Tier history** — each member's tier assignments are effective-dated too, symmetric with `fee_tiers`, so a member switching tiers mid-year keeps stable historical calculations.
 - **Membership** is a list of `joined`/`left` periods, supporting resignations and re-joins.
-- **Fee overrides** are dated individual exceptions (waivers, custom rates) that take precedence over tier rates.
+- **Fee overrides** are dated individual exceptions (waivers, custom rates) that take precedence over tier rates. Override amounts are annual rates prorated over their active window, like any other rate segment.
 - **Proration** decides liability for partial years (join/leave mid-year). It is a global policy in `steward.yaml` — `monthly` (default), `daily`, or `none` — because it encodes the association's statutes, not a property of a fee tier. Example: with `monthly`, a member joining in April is liable for 8/12 of the annual fee.
 
 ### 3.2 Accrual-based dues tracking
@@ -82,6 +82,7 @@ Canonical definitions live in [architecture.md §3](../docs/architecture.md#3-da
 - **Phase 2: Automated Financial Reporting** — the annual treasurer's report for the general assembly:
   - Automated compilation of opening/closing bank balances, category-wise income/expenses, and member counts.
   - Sequential receipt numbering and internal voucher (self-receipt) generation.
+- **Phase 2: Monthly accrual cadence** (optional) — `dues.accrual_cadence: "annual" | "monthly"` controlling whether `generate-dues` books one claim per year or one per month. Changes posting dates and counts, not rate math (decision #11).
 - **Phase 3: General Budgeting & Cost Centers**
   - Target vs. actual variance analysis using `hledger budget`.
   - Cost-center tagging for specific projects, clubhouses, or events.
@@ -106,3 +107,4 @@ All design decisions to date (2026-11-08). The canonical specification of each d
 | 8 | **Booking date** is the transaction date. Value dates concern bank-internal interest settlement and are irrelevant at association scale; they are not recorded. | [architecture.md §3.5](../docs/architecture.md#35-bank-format-mappings-bank_formatsyaml) |
 | 9 | **Row order**: parsers must not assume any row order (exports may be newest-first). Rows are sorted by date before rendering — not for correctness (hledger and the content-hash dedup are order-insensitive), but so journal files read chronologically for humans. | [architecture.md §3.5](../docs/architecture.md#35-bank-format-mappings-bank_formatsyaml) |
 | 10 | **Categorization** lives in Steward, not in hledger rules files. Non-member rows are categorized by an ordered first-match-wins regex list in `categorization.yaml`; unmatched rows book to a suspense account flagged `review: uncategorized`. `rules/steward.rules` stays fully static. Rationale: hledger rules are stateless (no balances, no aliases), would mix member-aware and content rules in one file, and could leak personal data into a shareable file. | [architecture.md §3.4](../docs/architecture.md#34-categorizationyaml--non-member-transaction-rules) |
+| 11 | **Dues reference period stays annual** (decided 2026-11-09): all rates — including `fee_overrides` — are annual amounts; ISO dates everywhere (no `YYYY-MM` period keys). Overrides are prorated over their active window via the segment model (split at join/leave/tier/override boundaries, prorate each segment, sum, round once); overlapping overrides are invalid. A configurable reference period was rejected: it would introduce two date grammars in one file without eliminating the segment machinery. Monthly *accrual cadence* (booking twelve claims instead of one) may be added later without touching the schema. | [architecture.md §3.2](../docs/architecture.md#32-membersyaml--master-data) |
