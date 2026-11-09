@@ -22,7 +22,7 @@ Interactive: prompts for association name, currency, proration policy, and closi
    - `members.yaml`, `payer_aliases.yaml`, `categorization.yaml`, `bank_formats.yaml` — commented skeletons derived from the `*.example.yaml` files.
    - `rules/steward.rules` — the static write-path rules file (§6).
    - `journals/main.journal` — static `include **.journal`.
-   - `docs/runbook.md` — a starter handover runbook (daily/weekly/monthly routine, correction policy, handover steps).
+   - `docs/runbook.md` — a copy of the canonical handover runbook from the Steward repository's `docs/runbook.md` (import routine, commit cadence, correction policy, handover steps).
 2. `git init`; create a `.gitignore` covering OS artifacts (e.g. `.DS_Store`) and temp files.
 3. Run `steward validate` as a final smoke test.
 4. Print next steps: fill in members, configure the bank format mapping, run the first import.

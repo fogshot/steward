@@ -10,6 +10,8 @@ Steward serves volunteer treasurers of small member associations. It tracks memb
 > - [Architecture](.ai/docs/architecture.md) — data schemas, journal conventions, write path
 > - [Tech stack](.ai/docs/tech-stack.md) — technology choices and rationale
 
+Treasurer-facing documentation: [docs/runbook.md](docs/runbook.md) — the operational runbook (routine, correction policy, handover).
+
 ## User Manual
 
 ### Managing members

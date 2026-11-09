@@ -18,7 +18,7 @@ If code and docs disagree, the docs win — or the docs are deliberately updated
 - **Each fact lives in exactly one document.** Cross-reference instead of duplicating. The scope of each document is declared in its header — respect it.
 - **Design decisions** are recorded in the decision log (HLD §7) with date and rationale; the canonical spec is updated in architecture.md or the relevant PRD. Never silently reverse a logged decision.
 - **New features** get a PRD in `.ai/requirements/features/` before implementation.
-- User-facing documentation (runbook, CLI reference) does **not** belong in `.ai/` — it lives in the association's data repo or a future root-level `docs/`.
+- User-facing documentation (runbook, CLI reference) does **not** belong in `.ai/` — it lives in the root-level `docs/` (canonical) and is scaffolded into the association's data repo by `steward init`.
 
 ## Architectural invariants — never violate these
 

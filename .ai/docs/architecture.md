@@ -67,7 +67,8 @@ Rationale: hledger is the single owner of journal syntax and formatting, so Stew
 │       ├── 02.journal
 │       └── …
 └── docs/
-    └── runbook.md          # handover runbook (per-association)
+    └── runbook.md          # handover runbook — a copy of the canonical runbook
+                            # from the Steward repository's docs/runbook.md
 ```
 
 ## 3. Data Formats & Schemas
