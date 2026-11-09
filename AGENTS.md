@@ -46,16 +46,17 @@ If code and docs disagree, the docs win — or the docs are deliberately updated
 
 ## Commit policy
 
-- **Small, complete, single-purpose commits.** Each commit leaves the repo green: tests, lint, and type checks pass (pre-commit hooks enforce the mechanical half).
+- **Never commit without explicit user approval.** Do not run `git commit` on your own initiative. Instead, stage the changes, summarize them, and propose a commit — the user reviews first and says when to commit. Appropriate times to *propose* a commit: a completed PRD acceptance criterion, a coherent refactor, a settled design decision with its doc updates.
+- **Pre-commit must pass before committing, and its failure must block the commit.** Run `uvx pre-commit run --all-files` as a standalone step and check its exit code; only commit when it has passed. Never chain it into a commit command in a way that lets a failure slip through, and never use `git commit --no-verify`.
+- **Small, complete, single-purpose commits.** Each commit leaves the repo green: tests, lint, and type checks pass.
 - **Docs and code change together.** A behavior change and its PRD/architecture update land in the same commit — never "code now, docs later".
 - **Decision-log entries ride along.** A commit that settles a design question includes the dated decision-log update (HLD §7).
 - **Messages:** imperative subject (`Add X`, `Fix Y`), body explaining *why* when non-obvious. No Conventional-Commits ceremony.
-- **Frequency:** early and often — one commit per PRD acceptance criterion or coherent refactor.
 - **Never commit:** real member data, bank exports, `.latest.*` files, temp CSVs (see invariant 3 and `.gitignore`).
 
 ## Repository state
 
-- The project is scaffolded (src-layout, Click CLI stubs for all six commands). Implemented: `steward validate` (model.py dataclasses + checks.py named checks + validate.py orchestration). Implement remaining features against the PRDs in `.ai/requirements/features/`.
+- The project is scaffolded (src-layout, Click CLI stubs for all six commands). Implemented: `steward validate` (model.py dataclasses + checks.py named checks + validate.py orchestration) and `steward generate-dues` (dues.py segment/proration engine + journal.py hledger write path + generate_dues.py orchestration). Implement remaining features against the PRDs in `.ai/requirements/features/`.
 - Example files (`members.example.yaml`, `payer_aliases.example.yaml`, `steward.example.yaml`, `categorization.example.yaml`, `bank_formats.example.yaml`) must stay consistent with the canonical schemas in architecture.md §3 — `tests/test_examples.py` validates them.
 
 ## Validation commands
