@@ -365,7 +365,7 @@ Known limitation: rows without a stable reference remain vulnerable to descripti
 Master data and bank journals contain personal data (GDPR relevance):
 
 - **Real data lives in a separate, private Git repository per association** (decision #5 in the HLD), laid out as in §2. The public Steward repository carries only `*.example.yaml` files — never real member data, journals, or bank exports. `bank_formats.yaml` and `categorization.yaml` contain no personal data and may be shared between associations.
-- The data repo's `.gitignore` covers OS artifacts (e.g. `.DS_Store`) and temp files. `steward init` scaffolds the data repo, including its `.gitignore` — see [init.md](../../requirements/features/init.md).
+- The data repo's `.gitignore` covers OS artifacts (e.g. `.DS_Store`) and `*.csv` bank exports. `steward init` scaffolds the data repo, including its `.gitignore` — see [init.md](../../requirements/features/init.md).
 - The enriched CSV (§6) contains personal data but exists only as a temp file for the duration of a command run.
 
 ## 9. Error Handling & Safety
