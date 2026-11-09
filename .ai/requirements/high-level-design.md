@@ -94,7 +94,7 @@ Canonical definitions live in [architecture.md §3](../docs/architecture.md#3-da
 
 ## 7. Decision Log
 
-All design decisions to date (2026-11-08). The canonical specification of each decision lives in the referenced document; this log preserves the *what* and the *why*.
+The canonical specification of each decision lives in the referenced document; this log preserves the *what* and the *why*.
 
 | # | Decision | Spec |
 |---|----------|------|
@@ -110,3 +110,4 @@ All design decisions to date (2026-11-08). The canonical specification of each d
 | 10 | **Categorization** lives in Steward, not in hledger rules files. Non-member rows are categorized by an ordered first-match-wins regex list in `categorization.yaml`; rows matching no rule book to a suspense account with a `review:` tag. `rules/steward.rules` stays fully static. Rationale: hledger rules are stateless (no balances, no aliases), would mix member-aware and content rules in one file, and could leak personal data into a shareable file. | [architecture.md §3.4](../docs/architecture.md#34-categorizationyaml--non-member-transaction-rules) |
 | 11 | **Dues reference period stays annual** (decided 2026-11-09): all rates — including `fee_overrides` — are annual amounts; ISO dates everywhere (no `YYYY-MM` period keys). Overrides are prorated over their active window via the segment model (split at join/leave/tier/override boundaries, prorate each segment, sum, round once); overlapping overrides are invalid. A configurable reference period was rejected: it would introduce two date grammars in one file without eliminating the segment machinery. Monthly *accrual cadence* (booking twelve claims instead of one) may be added later without touching the schema. | [architecture.md §3.2](../docs/architecture.md#32-membersyaml--master-data) |
 | 12 | **Review-reason split for rows matching nothing** (decided 2026-11-09): member matching applies to incoming payments only (an outgoing row to a member is a refund, never a dues clearing). An incoming row with no alias match and no categorization rule is flagged `review: unmatched` (unknown payer — resolution: add an alias); an outgoing row matching no rule is flagged `review: uncategorized` (unknown expense — resolution: add a rule). §3.3 and §3.4 left the split between the two suspense reasons open; the sign-based split makes the "third-party payer → unmatched" edge case and the §3.3 resolutions consistent. | [architecture.md §3.3](../docs/architecture.md#33-payer_aliasesyaml--bank-payer-matching) |
+| 13 | **Pin hledger** (decided 2026-11-09): use a single tested version for reproducible journal operations and CI; older distribution packages can handle journal includes differently. | [tech-stack.md §hledger](../docs/tech-stack.md#hledger) |

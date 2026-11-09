@@ -12,10 +12,15 @@ jobs:
       matrix:
         python-version: ["3.11", "3.12", "3.13"]
     steps:
-      - uses: actions/checkout@v4
-      - uses: astral-sh/setup-uv@v5
+      - uses: actions/checkout@v7
+      - uses: astral-sh/setup-uv@v7
         with:
           enable-cache: true
+      - name: Install hledger
+        run: |
+          curl -fsSL https://github.com/hledgerorg/hledger/releases/download/1.52.4/hledger-linux-x64.tar.gz | tar xz -C "$RUNNER_TEMP" hledger
+          sudo install "$RUNNER_TEMP/hledger" /usr/local/bin/hledger
+          hledger --version
       - name: Install Python
         run: uv python install ${{ matrix.python-version }}
       - name: Install dependencies

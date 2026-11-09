@@ -28,7 +28,7 @@ Provides powerful command-line reporting, commodity tracking (EUR), and strict d
 - It is light-weight, non-distracting, and great for learning more of double-entry bookkeeping and accounting.
 - Compared to other PTA apps, hledger aims to be the easiest to use, best maintained, best documented, and robust option.
 
-Steward invokes `hledger` as an external binary (subprocess) for validation (`hledger check`) and reporting; it does not link against hledger. The supported hledger version should be pinned and documented once implementation starts.
+Steward invokes `hledger` as an external binary (subprocess) for validation (`hledger check`) and reporting; it does not link against hledger. The supported and CI-tested version is **1.52.4**; other versions are not currently supported.
 
 ## Python
 
