@@ -24,6 +24,8 @@ decimal-mark .
 currency €
 """
 
+MAIN_JOURNAL_CONTENT = "include **.journal\n"
+
 CSV_HEADER = ["date", "description", "account1", "account2", "amount", "comment"]
 
 
@@ -47,7 +49,7 @@ def _run_hledger(
         # hledger -f needs a file; an empty main.journal includes everything
         # below via its glob and doubles as the stable entry point.
         journals_dir.mkdir(parents=True, exist_ok=True)
-        main.write_text("include **.journal\n")
+        main.write_text(MAIN_JOURNAL_CONTENT)
     return subprocess.run(
         ["hledger", "-f", str(main), *args],
         capture_output=True,

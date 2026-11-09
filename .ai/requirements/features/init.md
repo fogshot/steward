@@ -1,6 +1,6 @@
 # PRD: Assisted Treasury Setup (`steward init`)
 
-> **Status:** Phase 1, specified — not yet implemented.
+> **Status:** Phase 1, implemented (2026-11-09).
 > Canonical spec: [../../docs/architecture.md](../../docs/architecture.md) §2 (directory layout), §8 (privacy & data protection).
 
 ## 1. Purpose
@@ -27,7 +27,7 @@ steward init [directory] [--no-input] [--name <association>] [--currency <code>]
    - `rules/steward.rules` — the static write-path rules file, written from the same canonical content the write path uses (architecture.md §6).
    - `journals/main.journal` — static `include **.journal`.
    - `docs/runbook.md` — a copy of the canonical handover runbook, bundled with the Steward package (an installed Steward has no repository checkout to copy from).
-3. **Git.** `git init`, then create the **initial commit** containing the full scaffold, so the audit trail starts at birth. Author identity resolution, in order: `--git-name`/`--git-email` options → interactive prompt → configured `user.name`/`user.email` (repo, then global). If no identity is available from any of these, abort with an error naming the missing configuration. Prompted or option-given identities are written to the new repository's local Git config so future commits work.
+3. **Git.** `git init`, then create the **initial commit** containing the full scaffold, so the audit trail starts at birth. Author identity resolution: `--git-name`/`--git-email` options → configured `user.name`/`user.email` (repo, then global) → interactive prompt (only when not already configured, §2). If no identity is available from any of these, abort with an error naming the missing configuration. Prompted or option-given identities are written to the new repository's local Git config so future commits work.
 4. **`.gitignore`** covering OS artifacts (e.g. `.DS_Store`) and `*.csv` bank exports — the files that must never be committed (invariant 3). Steward's own temp files never land in the data repo (the enriched CSV lives in the OS temp dir, §6), so no Steward-specific pattern is needed.
 5. **Smoke test.** Run `steward validate` on the new repository. A failure (e.g. hledger binary missing) aborts the command with a non-zero exit code — a treasury that does not validate on day one is not a valid scaffold.
 6. **Print next steps**: fill in members, configure the bank format mapping, run the first import — and the privacy notice (§4).

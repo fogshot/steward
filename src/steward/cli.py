@@ -8,6 +8,8 @@ from pathlib import Path
 
 import click
 
+from .model import PRORATION_VALUES
+
 
 @click.group()
 @click.version_option()
@@ -103,7 +105,46 @@ def close(year: int) -> None:
 
 
 @main.command(name="init")
-@click.argument("directory", type=click.Path(), required=False)
-def init(directory: str | None) -> None:
+@click.argument("directory", type=click.Path(path_type=Path), required=False)
+@click.option(
+    "--no-input", is_flag=True, help="Do not prompt; use options and defaults."
+)
+@click.option("--name", "association_name", default=None, help="Association name.")
+@click.option("--currency", default=None, help="Currency code (default: EUR).")
+@click.option(
+    "--proration",
+    type=click.Choice(PRORATION_VALUES),
+    default=None,
+    help="Dues proration policy (default: monthly).",
+)
+@click.option(
+    "--git-name", default=None, help="Git author name for the initial commit."
+)
+@click.option(
+    "--git-email", default=None, help="Git author email for the initial commit."
+)
+def init(
+    directory: Path | None,
+    no_input: bool,
+    association_name: str | None,
+    currency: str | None,
+    proration: str | None,
+    git_name: str | None,
+    git_email: str | None,
+) -> None:
     """Scaffold a new private treasury data repository (PRD: init.md)."""
-    raise click.ClickException("not implemented")
+    from .init_impl import init_repository as run
+
+    try:
+        report = run(
+            directory if directory is not None else Path("."),
+            no_input=no_input,
+            association_name=association_name,
+            currency=currency,
+            proration=proration,
+            git_name=git_name,
+            git_email=git_email,
+        )
+    except RuntimeError as exc:
+        raise click.ClickException(str(exc)) from exc
+    click.echo(report.render())

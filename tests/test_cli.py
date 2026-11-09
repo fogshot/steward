@@ -18,7 +18,6 @@ def test_help_lists_all_commands() -> None:
     [
         ["commit"],
         ["close", "--year", "2026"],
-        ["init"],
     ],
 )
 def test_unimplemented_commands_fail_gracefully(argv: list[str]) -> None:
