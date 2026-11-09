@@ -391,6 +391,7 @@ class BankFormat:
     parser_options: dict[str, object] = field(default_factory=dict)
     date_format: str | None = None
     decimal_mark: str | None = None
+    thousands_separator: str | None = None
     reference_pattern: str | None = None
 
 
@@ -437,6 +438,7 @@ def load_bank_formats(path: Path) -> tuple[BankFormatsFile, list[ValidationError
             parser_options=mapping.get("parser_options", {}) or {},
             date_format=mapping.get("date_format"),
             decimal_mark=mapping.get("decimal_mark"),
+            thousands_separator=mapping.get("thousands_separator"),
             reference_pattern=mapping.get("reference_pattern"),
         )
     return result, errors

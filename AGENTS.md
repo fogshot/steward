@@ -56,7 +56,7 @@ If code and docs disagree, the docs win — or the docs are deliberately updated
 
 ## Repository state
 
-- The project is scaffolded (src-layout, Click CLI stubs for all six commands). Implemented: `steward validate` (model.py dataclasses + checks.py named checks + validate.py orchestration) and `steward generate-dues` (dues.py segment/proration engine + journal.py hledger write path + generate_dues.py orchestration). Implement remaining features against the PRDs in `.ai/requirements/features/`.
+- The project is scaffolded (src-layout, Click CLI stubs for all six commands). Implemented: `steward validate` (model.py dataclasses + checks.py named checks + validate.py orchestration), `steward generate-dues` (dues.py segment/proration engine + journal.py hledger write path + generate_dues.py orchestration), and `steward import` (bank.py parsing/fingerprint/matching/classification + bank_import.py orchestration). Implement remaining features against the PRDs in `.ai/requirements/features/`.
 - Example files (`members.example.yaml`, `payer_aliases.example.yaml`, `steward.example.yaml`, `categorization.example.yaml`, `bank_formats.example.yaml`) must stay consistent with the canonical schemas in architecture.md §3 — `tests/test_examples.py` validates them.
 
 ## Validation commands

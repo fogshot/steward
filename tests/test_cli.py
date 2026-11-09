@@ -1,7 +1,5 @@
 """Smoke tests for the CLI skeleton."""
 
-from pathlib import Path
-
 import pytest
 from click.testing import CliRunner
 
@@ -18,18 +16,12 @@ def test_help_lists_all_commands() -> None:
 @pytest.mark.parametrize(
     "argv",
     [
-        ["import", "{export}", "--format", "bank-a-v1"],
         ["commit"],
         ["close", "--year", "2026"],
         ["init"],
     ],
 )
-def test_unimplemented_commands_fail_gracefully(
-    argv: list[str], tmp_path: Path
-) -> None:
-    export = tmp_path / "export.csv"
-    export.write_text("date;amount\n")
-    argv = [str(export) if arg == "{export}" else arg for arg in argv]
+def test_unimplemented_commands_fail_gracefully(argv: list[str]) -> None:
     result = CliRunner().invoke(main, argv)
     assert result.exit_code != 0
     assert "not implemented" in result.output

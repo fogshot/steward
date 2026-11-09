@@ -156,14 +156,14 @@ aliases:
 
   | `review` value | Condition | Typical resolution |
   |----------------|-----------|--------------------|
-  | `unmatched` | No alias matches the payer | Add an alias (e.g. third-party payer), or categorize as non-dues income/expense |
+  | `unmatched` | Incoming row: no alias matches the payer and no `categorization.yaml` rule matches | Add an alias (e.g. third-party payer), or categorize as non-dues income/expense |
   | `ambiguous` | Multiple members match | Pick the member manually |
   | `partial` | Alias matches, amount < outstanding receivable | Installment payment: book the partial clearing; the remainder stays open |
   | `overpaid` | Alias matches, amount > outstanding receivable | Decide manually: donation, next period's dues, or refund |
-  | `uncategorized` | Non-member row matching no rule in `categorization.yaml` (§3.4) | Edit the journal entry, or add a rule so future rows self-categorize |
+  | `uncategorized` | Outgoing row matching no rule in `categorization.yaml` (§3.4) | Edit the journal entry, or add a rule so future rows self-categorize |
 
 - Review state is plain journal metadata: everything awaiting attention is one hledger query away (`hledger print tag:review`). Resolving a flagged row means editing its tags/postings in the journal — an explicit human edit, not a Steward rewrite.
-- The alias check runs against the normalized payer name; the amount check runs against the member's current `assets:receivables:dues` balance as reported by hledger.
+- The alias check runs against the normalized payer name of **incoming payments only** — an outgoing row to a member (e.g. a refund) is never a dues clearing and falls through to categorization. The amount check runs against the member's current `assets:receivables:dues` balance as reported by hledger.
 
 ### 3.4 `categorization.yaml` — non-member transaction rules
 
@@ -180,7 +180,7 @@ categories:
 ```
 
 - Rules are evaluated in order; the first match wins. No priorities, negation, or multi-condition matching — an association's recurring counterparties don't need them, and the `review:` mechanism is the safety net.
-- Rows matching no rule book their second posting to a suspense account (`expenses:unknown` / `income:unknown`, sign-dependent) and are flagged `; review: uncategorized` (§3.3).
+- Rows matching no rule book their second posting to a suspense account (`expenses:unknown` / `income:unknown`, sign-dependent) and are flagged `; review: unmatched` (incoming) or `; review: uncategorized` (outgoing) — see the §3.3 table.
 - The file lives in the data repo but contains no personal data — like `bank_formats.yaml`, it is shareable between associations.
 - The learning loop: an uncategorized row is a one-time manual fix; adding a rule makes next month's identical row categorize itself.
 

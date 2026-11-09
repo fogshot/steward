@@ -1,6 +1,6 @@
 # PRD: Bank Statement Import
 
-> **Status:** Phase 1, specified — not yet implemented.
+> **Status:** Phase 1, implemented (2026-11-09).
 > Canonical schemas: [../../docs/architecture.md](../../docs/architecture.md) §3.3 (payer matching), §3.4 (categorization), §3.5 (bank formats), §5.2 (posting model), §6 (write path), §7.2 (dedup).
 
 ## 1. Purpose
@@ -26,10 +26,11 @@ steward import <bank-export> --format <mapping> [--dry-run]
 1. **Parse** through the named format mapping into the internal transaction model: `date` (booking date, never value date), `amount` (signed `Decimal`), `currency`, `payee`, `description`, `reference`, `account`. Parsers must not assume row order.
 2. **Sort** rows by date (presentation normalization for human-readable journals; not correctness).
 3. **Deduplicate.** Compute `SHA-256(account | date | amount | payee | description-or-reference)` per row (normalization rules in §7.2; a stable end-to-end `reference` replaces `description` when extracted). Drop rows whose fingerprint already appears as an `; import-hash:` tag.
-4. **Match & categorize** each surviving row:
+4. **Match & categorize** each surviving row (member matching applies to incoming payments only — an outgoing row to a member is a refund or similar, never a dues clearing):
    - Payer matches exactly one member alias **and** amount equals that member's total outstanding dues receivable → high confidence: book the clearing posting (§5.2) with `member-id` tag.
-   - Otherwise → still import, flagged `; review: unmatched | ambiguous | partial | overpaid` (§3.3 table).
-   - Non-member rows → first-match-wins against `categorization.yaml`; no match → suspense account (`expenses:unknown` / `income:unknown`) + `; review: uncategorized`.
+   - Alias matches but amount differs → still book the clearing posting, flagged `; review: partial | overpaid`; multiple members match → suspense account, no `member-id`, flagged `; review: ambiguous` (§3.3 table).
+   - Non-member rows → first-match-wins against `categorization.yaml`; no match → suspense account (`expenses:unknown` / `income:unknown`, sign-dependent) + `; review: unmatched` (incoming — unknown payer, e.g. a third-party payer) or `; review: uncategorized` (outgoing — unknown expense). See decision #12.
+   - The amount check compares against the member's running receivable balance: when one file contains several payments for the same member, each row is checked against the remainder after the preceding rows.
 5. **Render** through the `hledger import` write path (§6), grouped by posting month.
 6. **Report** to stdout: imported count, dropped duplicates, and every flagged row with its `review:` reason.
 

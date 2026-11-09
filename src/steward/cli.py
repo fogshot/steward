@@ -47,14 +47,26 @@ def generate_dues(
 
 
 @main.command(name="import")
-@click.argument("bank_export", type=click.Path(exists=True))
+@click.argument("bank_export", type=click.Path(exists=True, path_type=Path))
 @click.option(
     "--format", "format_name", required=True, help="Mapping from bank_formats.yaml."
 )
+@click.option(
+    "--root",
+    type=click.Path(exists=True, file_okay=False, path_type=Path),
+    default=".",
+    help="Data repository root.",
+)
 @click.option("--dry-run", is_flag=True, help="Print transactions, write nothing.")
-def import_(bank_export: str, format_name: str, dry_run: bool) -> None:
+def import_(bank_export: Path, format_name: str, root: Path, dry_run: bool) -> None:
     """Import a bank statement export (PRD: bank-import.md)."""
-    raise click.ClickException("not implemented")
+    from .bank_import import import_bank_export as run
+
+    try:
+        report = run(root, bank_export, format_name, dry_run=dry_run)
+    except RuntimeError as exc:
+        raise click.ClickException(str(exc)) from exc
+    click.echo(report.render())
 
 
 @main.command()
