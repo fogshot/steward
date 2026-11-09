@@ -1,6 +1,6 @@
 # PRD: Validation
 
-> **Status:** Phase 1, specified — not yet implemented.
+> **Status:** Phase 1, implemented (2026-11-09).
 > Canonical schemas: [../../docs/architecture.md](../../docs/architecture.md) §3 (all data formats), §9 (error handling & safety).
 
 ## 1. Purpose

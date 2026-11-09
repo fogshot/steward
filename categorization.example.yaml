@@ -1,0 +1,8 @@
+# Ordered, first-match-wins regex → account rules for non-member
+# transactions. See .ai/docs/architecture.md §3.4.
+# `match` is a case-insensitive regex tested against payee + description.
+categories:
+  - match: "account fee|card statement"
+    account: "expenses:bank-fees"
+  - match: "hosting-provider"
+    account: "expenses:hosting"

@@ -3,6 +3,8 @@
 Command specifications live in .ai/requirements/features/ (one PRD per command).
 """
 
+from pathlib import Path
+
 import click
 
 
@@ -32,9 +34,22 @@ def import_(bank_export: str, format_name: str, dry_run: bool) -> None:
 
 
 @main.command()
-def validate() -> None:
+@click.option(
+    "--root",
+    type=click.Path(exists=True, file_okay=False, path_type=Path),
+    default=".",
+    help="Data repository root.",
+)
+def validate(root: Path) -> None:
     """Validate YAML schemas and journals (PRD: validation.md)."""
-    raise click.ClickException("not implemented")
+    from .validate import run_validation
+
+    errors = run_validation(root)
+    for error in errors:
+        click.echo(f"error: {error}", err=True)
+    if errors:
+        raise click.ClickException(f"validation failed with {len(errors)} error(s)")
+    click.echo("validation passed")
 
 
 @main.command()

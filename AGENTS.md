@@ -55,8 +55,8 @@ If code and docs disagree, the docs win — or the docs are deliberately updated
 
 ## Repository state
 
-- The project is scaffolded (src-layout, Click CLI stubs for all six commands); no feature logic is implemented yet. Implement against the PRDs in `.ai/requirements/features/`.
-- Example files (`members.example.yaml`, `payer_aliases.example.yaml`) must stay consistent with the canonical schemas in architecture.md §3.
+- The project is scaffolded (src-layout, Click CLI stubs for all six commands). Implemented: `steward validate` (model.py dataclasses + checks.py named checks + validate.py orchestration). Implement remaining features against the PRDs in `.ai/requirements/features/`.
+- Example files (`members.example.yaml`, `payer_aliases.example.yaml`, `steward.example.yaml`, `categorization.example.yaml`, `bank_formats.example.yaml`) must stay consistent with the canonical schemas in architecture.md §3 — `tests/test_examples.py` validates them.
 
 ## Validation commands
 

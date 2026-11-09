@@ -1,0 +1,21 @@
+# Bank CSV dialect → internal model mappings. See .ai/docs/architecture.md §3.5.
+# Internal fields: date (booking date), amount (signed), currency, payee,
+# description, reference, account.
+formats:
+  bank-a-v1:                      # mapping name; referenced by `steward import --format`
+    parser: csv                   # parser adapter to use
+    parser_options:
+      delimiter: ";"
+      encoding: "utf-8-sig"       # strips the byte-order mark
+      skip_header: 1
+    columns:                      # internal field ← CSV column header
+      date: "Booking Date"        # booking date, never the value date
+      amount: "Amount"            # single signed column
+      currency: "Currency"
+      payee: ["Originator", "Beneficiary"]  # first non-empty wins
+      description: "Purpose"
+      reference: "Booking Text"   # mined for an end-to-end reference
+      account: "Account IBAN"
+    date_format: "%d.%m.%Y"       # 09.11.2026
+    decimal_mark: ","             # -774,51 → -774.51
+    reference_pattern: 'End-to-End-Ref\.?:\s*(\S+)'
