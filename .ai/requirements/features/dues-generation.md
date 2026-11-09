@@ -1,6 +1,6 @@
 # PRD: Dues Generation
 
-> **Status:** Phase 1, specified — not yet implemented.
+> **Status:** Phase 1, implemented (2026-11-09).
 > Canonical schemas: [../../docs/architecture.md](../../docs/architecture.md) §3.2 (master data), §5.1/§5.3 (posting models), §6 (write path), §7.1 (idempotency).
 
 ## 1. Purpose
@@ -55,7 +55,7 @@ Idempotency & adjustments:
 
 Proration & segments:
 
-- A member joining in April with `monthly` proration and a €120 annual rate is booked €80.00 (8/12).
+- A member joining in April with `monthly` proration and a €120 annual rate is booked €90.00 (9/12 — April through December inclusive).
 - A member joining in April and leaving in June with `monthly` proration and a €120 annual rate is booked €30.00 (3/12).
 - A re-joining member (left 2024, re-joined July of the target year) with `monthly` proration and a €120 annual rate is booked €60.00 (6/12).
 - A member with a €60/yr override covering Jan–Mar and a €120/yr tier rate is booked €105.00 (3/12 × €60 + 9/12 × €120).

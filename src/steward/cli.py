@@ -3,6 +3,7 @@
 Command specifications live in .ai/requirements/features/ (one PRD per command).
 """
 
+from datetime import date, datetime
 from pathlib import Path
 
 import click
@@ -15,11 +16,34 @@ def main() -> None:
 
 
 @main.command()
-@click.option("--year", type=int, required=True, help="Fiscal year to generate for.")
+@click.option("--year", type=int, required=True, help="Calendar year to generate for.")
+@click.option(
+    "--date",
+    "booking_date",
+    type=click.DateTime(formats=["%Y-%m-%d"]),
+    default=None,
+    help="Booking date (default: today).",
+)
+@click.option(
+    "--root",
+    type=click.Path(exists=True, file_okay=False, path_type=Path),
+    default=".",
+    help="Data repository root.",
+)
 @click.option("--dry-run", is_flag=True, help="Print transactions, write nothing.")
-def generate_dues(year: int, dry_run: bool) -> None:
+def generate_dues(
+    year: int, booking_date: date | None, root: Path, dry_run: bool
+) -> None:
     """Generate annual membership-dues accruals (PRD: dues-generation.md)."""
-    raise click.ClickException("not implemented")
+    from .generate_dues import generate_dues as run
+
+    if isinstance(booking_date, datetime):
+        booking_date = booking_date.date()
+    try:
+        report = run(root, year, booking_date=booking_date, dry_run=dry_run)
+    except RuntimeError as exc:
+        raise click.ClickException(str(exc)) from exc
+    click.echo(report.render())
 
 
 @main.command(name="import")

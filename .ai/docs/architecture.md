@@ -128,7 +128,7 @@ Rules:
   - Tier change: `regular` (€120/yr) → `reduced` (€60/yr) effective 2026-07-01 → 6/12 × €120 + 6/12 × €60 = €90.00.
   - Partial override: €60/yr override covering Jan–Mar, `regular` €120/yr otherwise → 3/12 × €60 + 9/12 × €120 = €105.00.
 - **Proration** for partial years is governed by `dues.proration` in `steward.yaml` (§3.1):
-  - `monthly` (default): liability is counted in whole calendar months. Joining on any day in April makes April liable → 8/12 of the annual fee; leaving in June makes the member liable through June → 6/12.
+  - `monthly` (default): liability is counted in whole calendar months. Joining on any day in April makes April liable → 9/12 of the annual fee (April through December inclusive); leaving in June makes the member liable through June → 6/12.
   - `daily`: exact liable days / days in year.
   - `none`: full annual fee regardless of join/leave date (statutes with "full fee on entry" clauses).
   - The policy is global by design: it encodes the association's statutes, not a property of a fee tier. If a real requirement for per-tier policies ever appears, an optional `proration` key on a tier can override the global default without breaking the schema.

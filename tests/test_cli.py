@@ -18,7 +18,6 @@ def test_help_lists_all_commands() -> None:
 @pytest.mark.parametrize(
     "argv",
     [
-        ["generate-dues", "--year", "2026"],
         ["import", "{export}", "--format", "bank-a-v1"],
         ["commit"],
         ["close", "--year", "2026"],

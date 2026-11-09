@@ -43,7 +43,7 @@ All membership-related data is modeled as time ranges, so a single `members.yaml
 - **Tier history** — each member's tier assignments are effective-dated too, symmetric with `fee_tiers`, so a member switching tiers mid-year keeps stable historical calculations.
 - **Membership** is a list of `joined`/`left` periods, supporting resignations and re-joins.
 - **Fee overrides** are dated individual exceptions (waivers, custom rates) that take precedence over tier rates. Override amounts are annual rates prorated over their active window, like any other rate segment.
-- **Proration** decides liability for partial years (join/leave mid-year). It is a global policy in `steward.yaml` — `monthly` (default), `daily`, or `none` — because it encodes the association's statutes, not a property of a fee tier. Example: with `monthly`, a member joining in April is liable for 8/12 of the annual fee.
+- **Proration** decides liability for partial years (join/leave mid-year). It is a global policy in `steward.yaml` — `monthly` (default), `daily`, or `none` — because it encodes the association's statutes, not a property of a fee tier. Example: with `monthly`, a member joining in April is liable for 9/12 of the annual fee (April through December inclusive).
 
 ### 3.2 Accrual-based dues tracking
 
@@ -98,7 +98,7 @@ All design decisions to date (2026-11-08). The canonical specification of each d
 
 | # | Decision | Spec |
 |---|----------|------|
-| 1 | **Proration** is a configurable global policy `dues.proration` in `steward.yaml`, default `monthly` (join in April → 8/12 of annual fee). Global by design — it encodes the association's statutes, not a property of a fee tier; per-tier override only if a real requirement appears. | [architecture.md §3.2](../docs/architecture.md#32-membersyaml--master-data) |
+| 1 | **Proration** is a configurable global policy `dues.proration` in `steward.yaml`, default `monthly` (join in April → 9/12 of annual fee, April through December inclusive). Global by design — it encodes the association's statutes, not a property of a fee tier; per-tier override only if a real requirement appears. | [architecture.md §3.2](../docs/architecture.md#32-membersyaml--master-data) |
 | 2 | **Tier changes** use an effective-dated `tiers` history per member, symmetric with `fee_tiers`. Mid-year changes compose with proration: split at tier boundaries, prorate each segment, sum, round once. | [architecture.md §3.2](../docs/architecture.md#32-membersyaml--master-data) |
 | 3 | **Bank export formats** are handled by parser adapters + declarative column mappings in `bank_formats.yaml`; mappings express split debit/credit columns, multi-column fields, per-format date/number parsing, and reference extraction. | [architecture.md §3.5](../docs/architecture.md#35-bank-format-mappings-bank_formatsyaml) |
 | 4 | **Payment matching** is hybrid auto-accept: high-confidence matches (unique alias **and** amount equals the outstanding receivable) book automatically; everything else is imported with a `; review: <reason>` tag and listed in a post-import report. No interactive UI. | [architecture.md §3.3](../docs/architecture.md#33-payer_aliasesyaml--bank-payer-matching) |
