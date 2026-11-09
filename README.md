@@ -4,15 +4,45 @@ A command-line application to streamline association financial management throug
 
 Steward serves volunteer treasurers of small member associations. It tracks membership dues over time, imports bank statements and matches payments to members, and keeps auditable financial records — all in plain text files ([hledger](https://hledger.org) journals and YAML), version-controlled with Git.
 
-> **Status:** design draft. The canonical design documents live in [.ai/](.ai/):
+> **Status:** Phase 1 mostly implemented — `validate`, `generate-dues`, `import`, and `init` are working; `commit` and `close` are still stubs. The canonical design documents live in [.ai/](.ai/):
 > - [High-level design](.ai/requirements/high-level-design.md) — vision, principles, roadmap, decision log
 > - [Feature PRDs](.ai/requirements/features/) — per-command specifications
 > - [Architecture](.ai/docs/architecture.md) — data schemas, journal conventions, write path
 > - [Tech stack](.ai/docs/tech-stack.md) — technology choices and rationale
 
-Treasurer-facing documentation: [docs/runbook.md](docs/runbook.md) — the operational runbook (routine, correction policy, handover).
+## Documentation map
 
-## User Manual
+- **README (this file)** — what Steward is, how to install it, and the master-data reference (`members.yaml` semantics).
+- **[docs/runbook.md](docs/runbook.md)** — how to *operate* a treasury: the recurring routine, review-flag resolution, commit cadence, correction policy, and handover. `steward init` copies it into every treasury repository.
+
+## Installation
+
+Requirements: **Python ≥ 3.11**, **hledger 1.52.4** (the supported, CI-tested version), and **Git**.
+
+```sh
+git clone <this-repository> && cd steward
+uv sync                 # creates .venv with all dependencies
+uv run steward --help   # run via uv
+```
+
+For a permanent install, `uv tool install .` (or `pipx install .`) puts `steward` on your PATH.
+
+## Commands
+
+| Command | What it does |
+|---------|--------------|
+| `steward init [directory]` | Scaffold a new private treasury data repository |
+| `steward validate` | Check all YAML files and journals for consistency |
+| `steward generate-dues --year 2026` | Book annual membership-dues accruals (idempotent) |
+| `steward import <export.csv> --format <mapping>` | Import a bank statement: dedup, match payers to members, categorize |
+| `steward commit` | Validate, check review flags, and git-commit the treasury *(not yet implemented)* |
+| `steward close --year 2026` | Run the annual accounting close via hledger *(not yet implemented)* |
+
+All mutating commands support `--dry-run`. The operational routine — when to run what, and how to resolve review flags — is in [docs/runbook.md](docs/runbook.md).
+
+## User Manual: master data
+
+The treasury's master data lives in `members.yaml` in the data repository (scaffolded by `steward init`). This section is the reference for keeping it correct over time.
 
 ### Managing members
 

@@ -9,7 +9,7 @@ How to run the association's treasury with Steward: the recurring routine, the c
 The treasury is a **private Git repository** of plain-text files:
 
 - `steward.yaml` — configuration (association name, currency, proration policy, closing options).
-- `members.yaml` — member master data: fee tiers, membership periods, individual exceptions. How to record joins, resignations, tier changes, and fee changes is documented in the Steward repository's README.
+- `members.yaml` — member master data: fee tiers, membership periods, individual exceptions. How to record joins, resignations, tier changes, and fee changes is documented in the master-data reference in the Steward repository's README.
 - `payer_aliases.yaml` — which bank payer names belong to which member (including third-party payers, e.g. a spouse).
 - `categorization.yaml` — rules that categorize non-member transactions.
 - `bank_formats.yaml` — how to read your bank's CSV export.
@@ -20,7 +20,7 @@ Steward computes *what* to book; [hledger](https://hledger.org) owns the journal
 
 ## Tools
 
-Install once: **Git**, **hledger**, and **Steward** with its Python environment (see the Steward repository README). All commands run from the root of the treasury repository.
+Install once: **Git**, **hledger**, and **Steward** — see the Installation section of the Steward repository's README. All commands run from the root of the treasury repository.
 
 ## Setup (once)
 
