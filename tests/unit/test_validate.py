@@ -14,7 +14,6 @@ association: "Test Association"
 currency: "EUR"
 journals: "journals"
 journal_granularity: "monthly"
-fiscal_year_start: "01-01"
 dues:
   proration: "monthly"
 closing:

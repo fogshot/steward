@@ -7,7 +7,6 @@ ValidationError. All checks run; there is no fail-fast.
 from __future__ import annotations
 
 import re
-from datetime import date
 
 from .model import (
     GRANULARITY_VALUES,
@@ -266,21 +265,6 @@ def check_config_domains(config: Config) -> list[ValidationError]:
             )
         )
     return errors
-
-
-def check_fiscal_year_start(config: Config) -> list[ValidationError]:
-    try:
-        month, day = (int(part) for part in config.fiscal_year_start.split("-"))
-        date(2000, month, day)  # leap year so 02-29 is valid
-    except (ValueError, TypeError):
-        return [
-            ValidationError(
-                CONFIG_FILE,
-                "fiscal_year_start",
-                f"expected MM-DD, got {config.fiscal_year_start!r}",
-            )
-        ]
-    return []
 
 
 def all_member_checks(members: MembersFile) -> list[ValidationError]:

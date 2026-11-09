@@ -13,7 +13,7 @@ Real data lives in a **separate, private Git repository per association** (decis
 steward init [directory]
 ```
 
-Interactive: prompts for association name, currency, fiscal year start, proration policy, and closing options (signing, remote).
+Interactive: prompts for association name, currency, proration policy, and closing options (signing, remote).
 
 ## 3. Behavior
 

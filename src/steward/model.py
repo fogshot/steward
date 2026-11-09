@@ -449,7 +449,6 @@ KNOWN_CONFIG_KEYS = {
     "currency",
     "journals",
     "journal_granularity",
-    "fiscal_year_start",
     "dues",
     "closing",
 }
@@ -465,7 +464,6 @@ class Config:
     currency: str = "EUR"
     journals: str = "journals"
     journal_granularity: str = "monthly"
-    fiscal_year_start: str = "01-01"
     proration: str = "monthly"
     closing_sign: bool = False
     closing_remote: str | None = None
@@ -490,8 +488,6 @@ def load_config(path: Path) -> tuple[Config, list[ValidationError]]:
         config.journals = data["journals"]
     if isinstance(data.get("journal_granularity"), str):
         config.journal_granularity = data["journal_granularity"]
-    if isinstance(data.get("fiscal_year_start"), str):
-        config.fiscal_year_start = data["fiscal_year_start"]
     dues = data.get("dues", {})
     if isinstance(dues, dict):
         for key in dues:

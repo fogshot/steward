@@ -3,7 +3,6 @@ association: "Example Association e.V."
 currency: "EUR"
 journals: "journals"            # directory containing the journal files
 journal_granularity: "monthly"  # monthly (default) | yearly
-fiscal_year_start: "01-01"      # MM-DD
 dues:
   proration: "monthly"          # monthly (default) | daily | none
 closing:

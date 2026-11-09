@@ -16,12 +16,12 @@ steward generate-dues --year 2026 [--dry-run]
 ## 3. Inputs
 
 - `members.yaml` — fee tiers, tier histories, membership periods, fee overrides ([architecture.md §3.2](../../docs/architecture.md#32-membersyaml--master-data)).
-- `steward.yaml` — `dues.proration` policy, `fiscal_year_start`.
+- `steward.yaml` — `dues.proration` policy.
 - `journals/main.journal` — existing `(member-id, year)` tags and previously booked amounts (read via hledger).
 
 ## 4. Behavior
 
-1. **Determine liability.** For each member: active during the target year (any `membership` period intersecting the fiscal year)?
+1. **Determine liability.** For each member: active during the target year (any `membership` period intersecting the calendar year)?
 2. **Resolve the rate** for each liable member: active `fee_overrides` entry → applicable `tiers` entry → `fee_tiers` rate effective at the accrual date. All amounts are annual rates.
 3. **Prorate** per `dues.proration` (`monthly` default: whole liable months / 12; `daily`; `none`) using the segment model: split the year at every boundary — join/leave, tier changes, override start/end — prorate each segment at its applicable annual rate, sum, round half-up to cents once.
 4. **Pre-flight scan.** Collect all `(member-id, year)` tag pairs across the journals. For each member:
@@ -41,7 +41,6 @@ steward generate-dues --year 2026 [--dry-run]
 | Override covering part of the year | Override rate prorated over its window; tier rate prorated over the rest (segment model) |
 | Member left in a prior year | Skipped entirely |
 | Rate changed after accrual was booked | Adjustment entry for the difference, dated in the current period |
-| Fiscal year ≠ calendar year | Liability computed against `fiscal_year_start` boundaries |
 
 ## 6. Acceptance Criteria
 

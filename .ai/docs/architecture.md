@@ -79,7 +79,6 @@ association: "Musterverein e.V."
 currency: "EUR"
 journals: "journals"          # directory containing the journal files
 journal_granularity: "monthly"  # monthly (default) | yearly
-fiscal_year_start: "01-01"    # MM-DD
 dues:
   proration: "monthly"        # monthly (default) | daily | none
 closing:
@@ -236,6 +235,7 @@ A mapping that cannot be expressed declaratively (e.g. amounts embedded in prose
 
 ### 3.6 Journal conventions
 
+- **The fiscal year is the calendar year.** There is no `fiscal_year_start` configuration; a configurable fiscal year is a possible future feature (HLD §6) with wide-ranging implications (journal layout, accrual dates, closing file placement) that must be designed then.
 - **One file per month** (default): `journals/YYYY/MM.journal`. With `journal_granularity: "yearly"`, one file per year: `journals/YYYY.journal`.
 - `journals/main.journal` is static and never needs editing: it contains only `include **.journal` (hledger globs match all journal files in the directory and below, and always exclude the including file).
 - Monthly granularity supports fiscal regulations that require timely, tamper-evident recording (e.g. GoBD): each month is closed and committed to Git, keeping every commit small and reviewable. Because `import` appends each transaction to the file of its posting month, previously committed month files stay untouched; a late backdated append shows up as an isolated Git diff.

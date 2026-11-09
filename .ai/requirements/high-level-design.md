@@ -69,7 +69,7 @@ Phase 1 (current focus) — each feature has a dedicated PRD:
 
 Canonical definitions live in [architecture.md §3](../docs/architecture.md#3-data-formats--schemas).
 
-- `steward.yaml` — association configuration (currency, journal granularity, proration, closing options).
+- `steward.yaml` — association configuration (currency, journal granularity, proration, closing options). The fiscal year is the calendar year.
 - `members.yaml` — effective-dated `fee_tiers`; `members` with `id`, `name`, effective-dated `tiers` history, `membership` periods, `fee_overrides`.
 - `payer_aliases.yaml` — maps payer names/aliases from bank transactions to member IDs.
 - `categorization.yaml` — ordered regex → account rules for non-member transactions (bank fees, vendors, other income/expenses).
@@ -83,6 +83,7 @@ Canonical definitions live in [architecture.md §3](../docs/architecture.md#3-da
   - Automated compilation of opening/closing bank balances, category-wise income/expenses, and member counts.
   - Sequential receipt numbering and internal voucher (self-receipt) generation.
 - **Phase 2: Monthly accrual cadence** (optional) — `dues.accrual_cadence: "annual" | "monthly"` controlling whether `generate-dues` books one claim per year or one per month. Changes posting dates and counts, not rate math (decision #11).
+- **Future: configurable fiscal year** — Phase 1 assumes the fiscal year is the calendar year (no `fiscal_year_start` in `steward.yaml`). Supporting other fiscal years has wide-ranging implications that must be designed together: journal file layout (a fiscal year would span two calendar-year directories), accrual dates, `daily` proration denominators, the meaning of the `year:` tag, and closing file placement.
 - **Phase 3: General Budgeting & Cost Centers**
   - Target vs. actual variance analysis using `hledger budget`.
   - Cost-center tagging for specific projects, clubhouses, or events.

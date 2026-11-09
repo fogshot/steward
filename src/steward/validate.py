@@ -43,7 +43,6 @@ def run_validation(root: Path) -> list[ValidationError]:
     errors.extend(checks.check_categorization_regexes(categorization))
     errors.extend(checks.check_bank_formats(formats))
     errors.extend(checks.check_config_domains(config))
-    errors.extend(checks.check_fiscal_year_start(config))
 
     journals_dir = root / config.journals
     if journals_dir.is_dir():
