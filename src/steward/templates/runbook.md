@@ -84,7 +84,26 @@ steward commit
 
 Validates everything, refuses while unresolved `review:` tags exist (`--force` overrides), and commits the repository. Commit whenever new entries exist — daily, weekly, at least monthly. Frequent small commits *are* the audit trail: fiscal regulations (GoBD-style) demand timely, tamper-evident recording, and Git provides it.
 
-For stricter tamper-resistance, `steward.yaml` offers `closing.sign: true` (GPG-signed commits — proves *who* recorded) and `closing.remote` (push after commit — server-side timestamps outside your control).
+For stricter tamper-resistance, `steward.yaml` offers `closing.sign: true` (GPG-signed commits — proves *who* recorded) and `closing.remote` (push after commit — server-side timestamps outside your control). Setup for both is below.
+
+#### Optional: GPG-signed commits
+
+Signed commits prove *who* recorded each period and make tags unforgeable. One-time setup:
+
+1. **Create a key** if you don't have one: `gpg --full-generate-key` (RSA, at least 3072 bits; use your own name and email). List your keys with `gpg --list-secret-keys --keyid-format=long` and note the key ID (the part after `rsa3072/`).
+2. **Tell Git to use it**: `git config --global user.signingkey <key-id>`.
+3. **Enable signing** in `steward.yaml`: set `closing.sign: true`. From now on `steward commit` signs every commit; it fails if the key is missing or the passphrase can't be entered.
+4. **Back up the key** (`gpg --export-secret-keys <key-id> > key.gpg`, stored safely) and plan to hand it over with the treasury — see Handover.
+
+#### Optional: push to a remote
+
+Pushing after each commit adds server-side timestamps outside your control — and doubles as the off-site backup. One-time setup:
+
+1. **Create a private repository** with your hosting provider (e.g. a private GitHub repository). Private, never public — the treasury contains personal data.
+2. **Connect it**: `git remote add origin <url>` from the treasury repository, then `git push -u origin main` once to establish the tracking branch.
+3. **Enable pushing** in `steward.yaml`: set `closing.remote: "origin"`. From now on `steward commit` pushes after every commit.
+
+Both options affect only future commits and can be enabled independently or together.
 
 ### Corrections — read this before touching old entries
 

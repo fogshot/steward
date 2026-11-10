@@ -44,6 +44,27 @@ All mutating commands support `--dry-run`. The operational routine — when to r
 
 The treasury's master data lives in `members.yaml` in the data repository (scaffolded by `steward init`). This section is the reference for keeping it correct over time.
 
+### Configuration reference: `steward.yaml`
+
+```yaml
+association: "Musterverein e.V."
+currency: "EUR"
+journals: "journals"            # directory containing the journal files
+journal_granularity: "monthly"  # monthly (default) | yearly
+dues:
+  proration: "monthly"          # monthly (default) | daily | none
+closing:
+  sign: false                   # GPG-sign commits made by `steward commit`
+  remote: null                  # e.g. "origin" — push after each commit
+```
+
+The `closing.*` keys control tamper-resistance for `steward commit` (see the runbook for the setup walkthrough):
+
+- `sign: true` — every commit is GPG-signed, proving *who* recorded it. Requires a GPG key configured in Git (`user.signingkey`); commit fails without one.
+- `remote: "origin"` — after each commit, Steward pushes to the named remote, adding server-side timestamps outside the treasurer's control. Requires the remote to be configured in Git (`git remote add`).
+
+Git commit timestamps alone are forgeable, so associations with stricter requirements should enable one or both. Both default to off and can be enabled at any time — they affect only future commits.
+
 ### Managing members
 
 #### A member joins
