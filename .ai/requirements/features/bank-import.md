@@ -25,20 +25,21 @@ steward import <bank-export> --format <mapping> [--dry-run]
 
 1. **Parse** through the named format mapping into the internal transaction model: `date` (booking date, never value date), `amount` (signed `Decimal`), `currency`, `payee`, `description`, `reference`, `account`. Parsers must not assume row order.
 2. **Sort** rows by date (presentation normalization for human-readable journals; not correctness).
-3. **Deduplicate.** Compute `SHA-256(account | date | amount | payee | description-or-reference)` per row (normalization rules in §7.2; a stable end-to-end `reference` replaces `description` when extracted). Drop rows whose fingerprint already appears as an `; import-hash:` tag.
+3. **Deduplicate.** Compute `SHA-256(account | date | amount | payee | description-or-reference)` per row (normalization rules in §7.2; a stable end-to-end `reference` replaces `description` when extracted). Rows whose fingerprint already appears as an `; import-hash:` tag are duplicates — with one exception: a duplicate whose journal entry is **uncommitted** and flagged `review: unmatched | uncategorized` is re-classified against the current aliases/rules, and if it now resolves, the entry is rewritten in place (non-bank posting account and tags; amounts never change) and reported as resolved (decision #14). Committed entries and `partial`/`overpaid`/`ambiguous` flags are never re-resolved.
 4. **Match & categorize** each surviving row (member matching applies to incoming payments only — an outgoing row to a member is a refund or similar, never a dues clearing):
    - Payer matches exactly one member alias **and** amount equals that member's total outstanding dues receivable → high confidence: book the clearing posting (§5.2) with `member-id` tag.
    - Alias matches but amount differs → still book the clearing posting, flagged `; review: partial | overpaid`; multiple members match → suspense account, no `member-id`, flagged `; review: ambiguous` (§3.3 table).
    - Non-member rows → first-match-wins against `categorization.yaml`; no match → suspense account (`expenses:unknown` / `income:unknown`, sign-dependent) + `; review: unmatched` (incoming — unknown payer, e.g. a third-party payer) or `; review: uncategorized` (outgoing — unknown expense). See decision #12.
    - The amount check compares against the member's running receivable balance: when one file contains several payments for the same member, each row is checked against the remainder after the preceding rows.
 5. **Render** through the `hledger import` write path (§6), grouped by posting month.
-6. **Report** to stdout as a run summary: parsed count, imported count, dropped-duplicate count, the journal file(s) written (or that would be written, with `--dry-run`), and the flagged rows with their `review:` reasons. Imported and duplicate rows are **not** listed individually — they need no action. Flagged rows are listed individually up to a threshold (20), beyond which they are summarized by reason; the report then points to `hledger print tag:review`, the treasurer's working queue.
+6. **Report** to stdout as a run summary: parsed count, imported count, dropped-duplicate count, resolved count (re-resolved duplicates, step 3), the journal file(s) written (or that would be written, with `--dry-run`), and the flagged rows with their `review:` reasons. Imported and duplicate rows are **not** listed individually — they need no action. Flagged rows are listed individually up to a threshold (20), beyond which they are summarized by reason; the report then points to `hledger print tag:review`, the treasurer's working queue.
 
 ## 5. Edge Cases
 
 | Case | Behavior |
 |------|----------|
 | Overlapping re-export (same rows, new filename/order) | All duplicates dropped; nothing appended |
+| Re-import after adding a rule/alias | Uncommitted `unmatched`/`uncategorized` entries covered by the new rule/alias are rewritten in place and reported as resolved; committed entries stay flagged (resolve via adjustment) |
 | Bank rewords descriptions between exports | Rows with a stable end-to-end reference still dedup; others may duplicate → manual resolution (known limitation, §7.2) |
 | Installment payment (amount < receivable) | Partial clearing booked, flagged `review: partial` |
 | Overpayment (amount > receivable) | Flagged `review: overpaid`; treasurer decides donation / next period / refund |
@@ -49,6 +50,8 @@ steward import <bank-export> --format <mapping> [--dry-run]
 ## 6. Acceptance Criteria
 
 - Re-importing the same file: zero new transactions, report shows all rows as duplicates.
+- Re-importing after adding a categorization rule: uncommitted `uncategorized` entries matching the rule are rewritten to the rule's account with the `review:` tag removed, reported as resolved, and `hledger check` still passes; committed entries are untouched.
+- Re-importing after adding a payer alias: an uncommitted `unmatched` entry gains the `member-id` tag and the receivable-clearing posting account.
 - A row whose payer alias matches and whose amount equals the member's receivable gets a `member-id` tag and a receivable-clearing posting, no `review:` tag.
 - An unknown payer lands in a suspense account with `review: uncategorized` or `review: unmatched` and appears in the report.
 - The report shows counts (parsed/imported/duplicates), the written journal file(s), and flagged rows with their reasons — individually up to 20, summarized by reason beyond that.

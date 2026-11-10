@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import subprocess
 from datetime import date
 from decimal import Decimal
 from pathlib import Path
@@ -362,6 +363,127 @@ def test_report_render_summarizes_many_flagged_rows_by_reason(
     assert "  uncategorized: 25" in rendered
     assert "Shop 1" not in rendered  # individual rows not listed
     assert "hledger print tag:review" in rendered
+
+
+# --- re-resolution (decision #14) -----------------------------------------------
+
+
+def git_commit_all(root: Path) -> None:
+    subprocess.run(["git", "-C", str(root), "init", "-q"], check=True)
+    subprocess.run(["git", "-C", str(root), "add", "-A"], check=True)
+    subprocess.run(
+        [
+            "git",
+            "-C",
+            str(root),
+            "-c",
+            "user.name=T",
+            "-c",
+            "user.email=t@t.t",
+            "commit",
+            "-qm",
+            "commit",
+        ],
+        check=True,
+    )
+
+
+def test_reimport_with_new_rule_resolves_uncommitted_entry(tmp_path: Path) -> None:
+    root = make_repo(tmp_path)
+    export = write_export(root, ["2026-01-15;-9.99;Random Shop;office stuff;DE001"])
+    first = import_bank_export(root, export, "test-bank")
+    assert first.resolved == 0
+    assert "expenses:unknown" in journal_text(root)
+
+    categories = (root / "categorization.yaml").read_text()
+    (root / "categorization.yaml").write_text(
+        categories + '  - match: "office stuff"\n    account: "expenses:office"\n'
+    )
+    second = import_bank_export(root, export, "test-bank")
+    assert second.resolved == 1
+    assert second.duplicates == 0
+    assert second.flagged == []
+    text = journal_text(root)
+    assert "expenses:office" in text
+    assert "expenses:unknown" not in text
+    assert "review:" not in text
+    check(root / "journals")  # write-path gate still passes
+
+
+def test_reimport_with_new_alias_resolves_to_member_clearing(tmp_path: Path) -> None:
+    root = make_repo(tmp_path)
+    accrue_2026(root)
+    export = write_export(root, ["2026-02-03;120.00;J. Doe;membership dues;DE001"])
+    first = import_bank_export(root, export, "test-bank")
+    assert [reason for _, _, reason in first.flagged] == ["unmatched"]
+
+    aliases = (root / "payer_aliases.yaml").read_text()
+    (root / "payer_aliases.yaml").write_text(aliases + '    - "J. Doe"\n')
+    second = import_bank_export(root, export, "test-bank")
+    assert second.resolved == 1
+    text = journal_text(root)
+    assert "member-id: 1001" in text
+    assert "assets:receivables:dues" in text
+    assert "review:" not in text
+    assert query_receivable_balance(root / "journals", "1001") == 0
+
+
+def test_committed_entries_are_never_rewritten(tmp_path: Path) -> None:
+    root = make_repo(tmp_path)
+    export = write_export(root, ["2026-01-15;-9.99;Random Shop;office stuff;DE001"])
+    import_bank_export(root, export, "test-bank")
+    git_commit_all(root)
+
+    categories = (root / "categorization.yaml").read_text()
+    (root / "categorization.yaml").write_text(
+        categories + '  - match: "office stuff"\n    account: "expenses:office"\n'
+    )
+    report = import_bank_export(root, export, "test-bank")
+    assert report.resolved == 0
+    assert report.duplicates == 1
+    assert report.committed_flagged == 1
+    text = journal_text(root)
+    assert "expenses:unknown" in text  # untouched
+    assert "review: uncategorized" in text
+    assert "committed with open review flags" in report.render()
+
+
+def test_partial_flags_are_not_auto_reresolved(tmp_path: Path) -> None:
+    root = make_repo(tmp_path)
+    accrue_2026(root)
+    export = write_export(root, ["2026-02-03;60.00;John Doe;installment;DE001"])
+    first = import_bank_export(root, export, "test-bank")
+    assert [reason for _, _, reason in first.flagged] == ["partial"]
+    second = import_bank_export(root, export, "test-bank")
+    assert second.resolved == 0
+    assert second.duplicates == 1
+    assert "review: partial" in journal_text(root)
+
+
+def test_reresolution_dry_run_writes_nothing(tmp_path: Path) -> None:
+    root = make_repo(tmp_path)
+    export = write_export(root, ["2026-01-15;-9.99;Random Shop;office stuff;DE001"])
+    import_bank_export(root, export, "test-bank")
+    categories = (root / "categorization.yaml").read_text()
+    (root / "categorization.yaml").write_text(
+        categories + '  - match: "office stuff"\n    account: "expenses:office"\n'
+    )
+    report = import_bank_export(root, export, "test-bank", dry_run=True)
+    assert report.resolved == 1
+    assert "would resolve: 1" in report.render()
+    assert "expenses:unknown" in journal_text(root)  # unchanged on disk
+
+
+def test_reresolution_updates_receivable_balance(tmp_path: Path) -> None:
+    root = make_repo(tmp_path)
+    accrue_2026(root)
+    export = write_export(root, ["2026-02-03;120.00;J. Doe;membership dues;DE001"])
+    import_bank_export(root, export, "test-bank")
+    aliases = (root / "payer_aliases.yaml").read_text()
+    (root / "payer_aliases.yaml").write_text(aliases + '    - "J. Doe"\n')
+    second = import_bank_export(root, export, "test-bank")
+    assert second.resolved == 1
+    assert query_receivable_balance(root / "journals", "1001") == 0
 
 
 def test_cli_import(tmp_path: Path) -> None:

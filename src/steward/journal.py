@@ -9,6 +9,7 @@ from __future__ import annotations
 
 import csv
 import json
+import re
 import subprocess
 import tempfile
 from dataclasses import dataclass
@@ -117,6 +118,42 @@ def _has_transactions(journals_dir: Path, member_id: str, year: str) -> bool:
 def query_import_hashes(journals_dir: Path) -> set[str]:
     """All import-hash tag values across the journals (dedup database)."""
     return _tag_values(journals_dir, "import-hash")
+
+
+def query_review_entries(journals_dir: Path) -> dict[str, tuple[str, Path]]:
+    """Flagged entries: import-hash → (review reason, journal file)."""
+    result = _run_hledger(journals_dir, ["print", "tag:review", "-O", "json"])
+    if result.returncode != 0:
+        raise RuntimeError(f"hledger query failed: {result.stderr.strip()}")
+    entries: dict[str, tuple[str, Path]] = {}
+    for txn in json.loads(result.stdout or "[]"):
+        tags = {name: value for name, value in txn.get("ttags", [])}
+        import_hash, review = tags.get("import-hash"), tags.get("review")
+        positions = txn.get("tsourcepos", [])
+        if import_hash and review and positions:
+            source = positions[0].get("sourceName", "")
+            entries[import_hash] = (review, Path(source))
+    return entries
+
+
+def committed_import_hashes(root: Path) -> set[str]:
+    """Import hashes present in git HEAD — those entries are immutable.
+
+    An empty set when the repository has no commits yet (or is not a git
+    repository at all): nothing is committed, everything is working state.
+    """
+    try:
+        result = subprocess.run(
+            ["git", "-C", str(root), "grep", "-h", "import-hash:", "HEAD", "--", "."],
+            capture_output=True,
+            text=True,
+            check=False,
+        )
+    except FileNotFoundError:
+        return set()
+    if result.returncode not in (0, 1):  # 1 = no matches
+        return set()
+    return set(re.findall(r"import-hash:\s*([0-9a-f]{64})", result.stdout))
 
 
 def query_receivable_balance(journals_dir: Path, member_id: str) -> Decimal:

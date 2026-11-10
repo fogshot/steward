@@ -163,7 +163,7 @@ aliases:
   | `overpaid` | Alias matches, amount > outstanding receivable | Decide manually: donation, next period's dues, or refund |
   | `uncategorized` | Outgoing row matching no rule in `categorization.yaml` (§3.4) | Edit the journal entry, or add a rule so future rows self-categorize |
 
-- Review state is plain journal metadata: everything awaiting attention is one hledger query away (`hledger print tag:review`). Resolving a flagged row means editing its tags/postings in the journal — an explicit human edit, not a Steward rewrite.
+- Review state is plain journal metadata: everything awaiting attention is one hledger query away (`hledger print tag:review`). Resolution depends on commit state (decision #14): an **uncommitted** flagged row resolves itself the next time `steward import` re-processes that row with covering rules/aliases (or can be edited by hand); a **committed** flagged row is immutable and is resolved by a later adjustment entry (§5.3).
 - The alias check runs against the normalized payer name of **incoming payments only** — an outgoing row to a member (e.g. a refund) is never a dues clearing and falls through to categorization. The amount check runs against the member's current `assets:receivables:dues` balance as reported by hledger.
 
 ### 3.4 `categorization.yaml` — non-member transaction rules
@@ -183,7 +183,7 @@ categories:
 - Rules are evaluated in order; the first match wins. No priorities, negation, or multi-condition matching — an association's recurring counterparties don't need them, and the `review:` mechanism is the safety net.
 - Rows matching no rule book their second posting to a suspense account (`expenses:unknown` / `income:unknown`, sign-dependent) and are flagged `; review: unmatched` (incoming) or `; review: uncategorized` (outgoing) — see the §3.3 table.
 - The file lives in the data repo but contains no personal data — like `bank_formats.yaml`, it is shareable between associations.
-- The learning loop: an uncategorized row is a one-time manual fix; adding a rule makes next month's identical row categorize itself.
+- The learning loop: adding a rule makes future rows categorize themselves — and re-running `steward import` re-resolves existing **uncommitted** flagged rows against the new rules (decision #14), so a first import of a long history converges in a few rule-and-rerun cycles instead of manual per-row edits.
 
 ### 3.5 Bank format mappings (`bank_formats.yaml`)
 
@@ -248,7 +248,7 @@ A mapping that cannot be expressed declaratively (e.g. amounts embedded in prose
   - `; year: 2026` — the dues period an **accrual or adjustment** belongs to. Payments carry **no** `year` tag: they clear the member's total receivable balance, and per-period aging is derived from the accrual side (decision #7 in the HLD).
   - `; import-hash: <sha256>` — deduplication fingerprint for imported bank rows.
   - `; review: <reason>` — marks an imported row as needing manual resolution (§3.3).
-- Files are append-only. Corrections are new transactions (adjustments), never edits.
+- **Committed entries are immutable; uncommitted entries are working state** (decision #14). Once `steward commit` records a journal in Git, its entries are never changed — corrections are new transactions (adjustments), never edits. Uncommitted entries may be rewritten: by the treasurer resolving a review flag by hand, and by `steward import` re-resolving uncommitted flagged rows (§7.2). The commit history is the immutability boundary, mirroring Git's own rule that only published history is sacred.
 - Appends are not guaranteed to land in date order (e.g. a January accrual generated in March). hledger handles unordered dates fine; do not enable `hledger check ordereddates`.
 
 ## 4. Chart of Accounts (minimal)
@@ -329,7 +329,7 @@ All journal writes flow through a single pipeline:
 
 Consequences:
 
-- **One writer.** Journal syntax, amount alignment, and tag formatting are owned by hledger; Steward cannot emit a malformed journal.
+- **One writer.** Journal syntax, amount alignment, and tag formatting are owned by hledger; Steward cannot emit a malformed journal. The single exception is review resolution (decision #14): `steward import` rewrites the account and tags of an uncommitted `review: unmatched | uncategorized` entry in place when current rules/aliases resolve it. The rewrite is text surgery restricted to Steward-generated two-posting blocks whose shape and amounts match the bank row exactly — anything unexpected is left untouched for manual resolution — and the `hledger check` gate (step 4) runs afterwards.
 - **`--dry-run` for free.** Steward's `--dry-run` maps to `hledger import --dry-run`, which prints the transactions that would be appended and writes nothing.
 - **hledger's built-in overlap detection is deliberately bypassed.** `import` tracks a `.latest.<file>` state file per *stable* input filename (latest imported date, plus the count of same-date records). Steward feeds it a fresh temp file of already-deduplicated rows, so no `.latest` state ever applies; deduplication is Steward's content-hash pre-filter (§7.2), which is robust against overlapping re-exports.
 - **Limitations.** One CSV row yields one two-posting transaction — sufficient for all posting models in §5. Rare multi-split transactions (e.g. one bank payout covering both dues and a donation) are entered manually with `hledger add`. Steward ensures the target period's journal file (and its year directory) exists, creating it empty if needed, before invoking `import`.
@@ -357,6 +357,8 @@ Normalization before hashing:
 - `reference`: when the format mapping extracts a stable end-to-end reference (§3.5), it **replaces** `description` in the fingerprint — banks occasionally reword description texts between overlapping exports, while end-to-end references are stable.
 
 Enforcement: before rendering, Steward drops every row whose fingerprint already appears as an `; import-hash:` tag in `journals/`. The fingerprint is then written into the transaction as that tag, making the journal itself the dedup database.
+
+**Re-resolution** (decision #14): a duplicate row whose journal entry is **uncommitted** and flagged `review: unmatched | uncategorized` is not just dropped — it is re-classified against the current `payer_aliases.yaml` / `categorization.yaml`. When classification now resolves the row, Steward rewrites the entry's non-bank posting account and tags in place (amounts never change) and reports it as resolved. Committed entries — fingerprints present in `HEAD` — are never touched; they resolve via adjustment entries (§5.3, §10.4). `partial` / `overpaid` / `ambiguous` flags are human decisions and are never re-resolved automatically.
 
 Known limitation: rows without a stable reference remain vulnerable to description rewording between exports; such duplicates must be resolved manually.
 

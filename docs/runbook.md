@@ -16,7 +16,7 @@ The treasury is a **private Git repository** of plain-text files:
 - `journals/` — the financial records, one hledger journal file per month.
 - `rules/steward.rules` — static hledger rules for the import write path; never edit.
 
-Steward computes *what* to book; [hledger](https://hledger.org) owns the journals and does the accounting. Journal files are append-only: you may add manual entries (`hledger add` or a text editor — e.g. cash transactions), but you never edit existing entries — the only exception is resolving a review flag *before* it is committed (see below).
+Steward computes *what* to book; [hledger](https://hledger.org) owns the journals and does the accounting. Journal entries become immutable once committed — until then they are working state: you may add manual entries (`hledger add` or a text editor — e.g. cash transactions), and uncommitted entries may still change when review flags resolve (see below).
 
 ## Tools
 
@@ -68,13 +68,13 @@ hledger print tag:review
 
 | Reason | Meaning | Resolution |
 |--------|---------|------------|
-| `unmatched` | Incoming payment, payer unknown | Add the payer to the member's aliases in `payer_aliases.yaml`, then edit the entry: set `member-id` and point the second posting at `assets:receivables:dues` — or categorize it as non-dues income |
+| `unmatched` | Incoming payment, payer unknown | Add the payer to the member's aliases in `payer_aliases.yaml` (or a rule to `categorization.yaml`), then re-run the import — the entry resolves itself |
 | `ambiguous` | Payer matches several members | Pick the member manually |
 | `partial` | Installment: amount below the open balance | Nothing to fix — the remainder stays open; remove the tag to acknowledge |
 | `overpaid` | Amount above the open balance | Decide: donation, next year's dues, or refund; adjust the entry accordingly |
-| `uncategorized` | Outgoing payment matching no rule | Edit the entry's expense account; add a rule to `categorization.yaml` so it self-categorizes next time |
+| `uncategorized` | Outgoing payment matching no rule | Add a rule to `categorization.yaml`, then re-run the import — the entry resolves itself |
 
-Resolving means editing the flagged journal entry (tags and postings) **before it is committed** — that edit is the resolution. Adding an alias or a rule is the learning loop: next month's identical row resolves itself.
+The learning loop: adding an alias or rule, then re-running `steward import` with the same export, re-resolves every **uncommitted** flagged entry it covers — account fixed, `review:` tag removed — and makes future rows resolve themselves. A first import of a long history converges in a few rule-and-rerun cycles. You can also edit an uncommitted flagged entry by hand; either way, resolution happens **before commit**. Once an entry is committed it is immutable: resolve it with a later adjustment entry (see Corrections).
 
 ### Commit — the recording ritual
 

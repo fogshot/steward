@@ -6,7 +6,7 @@ from dataclasses import dataclass, field
 from decimal import Decimal
 from pathlib import Path
 
-from . import bank, journal
+from . import bank, journal, resolve
 from .model import (
     load_bank_formats,
     load_categorization,
@@ -19,14 +19,21 @@ from .validate import run_validation
 # listing each row — the treasurer's working queue is `hledger print tag:review`.
 MAX_LISTED_FLAGGED = 20
 
+# Review reasons that re-importing re-resolves against current rules/aliases
+# (decision #14). partial/overpaid/ambiguous are human decisions.
+RE_RESOLVABLE = ("unmatched", "uncategorized")
+
 
 @dataclass
 class ImportReport:
     parsed: int = 0
     imported: int = 0
     duplicates: int = 0
+    committed_flagged: int = 0
+    resolved: int = 0
     flagged: list[tuple[str, Decimal, str]] = field(default_factory=list)
     journal_files: list[Path] = field(default_factory=list)
+    dry_run: bool = False
     dry_run_output: str = ""
 
     def render(self) -> str:
@@ -35,8 +42,15 @@ class ImportReport:
             f"imported: {self.imported}",
             f"duplicates: {self.duplicates}",
         ]
+        if self.committed_flagged:
+            lines.append(
+                f"  ({self.committed_flagged} committed with open review flags"
+                " — resolve manually)"
+            )
+        resolved_label = "would resolve" if self.dry_run else "resolved"
+        lines.append(f"{resolved_label}: {self.resolved}")
         if self.journal_files:
-            label = "would be written to:" if self.dry_run_output else "written to:"
+            label = "would be written to:" if self.dry_run else "written to:"
             lines.append(label)
             for path in self.journal_files:
                 lines.append(f"  {path}")
@@ -82,15 +96,26 @@ def import_bank_export(
     journals_dir = root / config.journals
     journals_exist = journals_dir.is_dir()
     existing = journal.query_import_hashes(journals_dir) if journals_exist else set()
+    review_entries = (
+        journal.query_review_entries(journals_dir) if journals_exist else {}
+    )
+    committed = journal.committed_import_hashes(root)
 
-    report = ImportReport(parsed=len(rows))
+    report = ImportReport(parsed=len(rows), dry_run=dry_run)
     survivors: list[tuple[bank.BankRow, str]] = []
+    candidates: list[tuple[bank.BankRow, str, str, Path]] = []
     for row in rows:
         fp = bank.fingerprint(row)
-        if fp in existing:
-            report.duplicates += 1
-        else:
+        if fp not in existing:
             survivors.append((row, fp))
+            continue
+        state = review_entries.get(fp)
+        if state and state[0] in RE_RESOLVABLE and fp not in committed:
+            candidates.append((row, fp, state[0], state[1]))
+        else:
+            report.duplicates += 1
+            if state and fp in committed:
+                report.committed_flagged += 1
 
     # Receivable balances per matched member, decremented as rows are
     # classified: a second payment to the same member in one file is
@@ -106,14 +131,17 @@ def import_bank_export(
             )
         return balances[member_id]
 
-    bookings: list[journal.Booking] = []
-    for row, fp in survivors:
+    def classify_row(row: bank.BankRow) -> bank.Classification:
         member_ids = bank.match_members(row.payee, aliases) if row.amount >= 0 else []
         matched = (
             {member_ids[0]: balance_for(member_ids[0])} if len(member_ids) == 1 else {}
         )
         category = bank.categorize(row.payee, row.description, categorization)
-        result = bank.classify(row, member_ids, matched, category)
+        return bank.classify(row, member_ids, matched, category)
+
+    bookings: list[journal.Booking] = []
+    for row, fp in survivors:
+        result = classify_row(row)
         tags = {"import-hash": fp}
         if result.member_id is not None:
             tags["member-id"] = result.member_id
@@ -133,6 +161,56 @@ def import_bank_export(
         )
         report.imported += 1
 
+    # Re-resolution (decision #14): re-classify uncommitted flagged duplicates
+    # against current rules/aliases and rewrite entries that now resolve.
+    rewrites: dict[Path, list[tuple[bank.BankRow, str, str, bank.Classification]]] = {}
+    for row, fp, old_reason, path in candidates:
+        result = classify_row(row)
+        old_account = bank.INCOME_SUSPENSE if row.amount >= 0 else bank.EXPENSE_SUSPENSE
+        new_account = result.account2 if row.amount >= 0 else result.account1
+        if (
+            new_account == old_account
+            and result.member_id is None
+            and result.review == old_reason
+        ):
+            report.duplicates += 1
+            report.flagged.append((row.booking_description, row.amount, old_reason))
+            continue
+        rewrites.setdefault(path, []).append((row, fp, old_reason, result))
+
+    rewrites_applied = 0
+    for path, entries in rewrites.items():
+        content = path.read_text(encoding="utf-8")
+        applied: list[tuple[bank.BankRow, bank.Classification]] = []
+        for row, fp, old_reason, result in entries:
+            new_content = resolve.rewrite_entry(
+                content,
+                fp,
+                new_account=result.account2 if row.amount >= 0 else result.account1,
+                amount=abs(row.amount),
+                member_id=result.member_id,
+                review=result.review,
+            )
+            if new_content is None:
+                # unexpected block shape (e.g. hand-edited): leave untouched
+                report.flagged.append((row.booking_description, row.amount, old_reason))
+                continue
+            content = new_content
+            applied.append((row, result))
+        if applied:
+            rewrites_applied += len(applied)
+            if not dry_run:
+                path.write_text(content, encoding="utf-8")
+            for row, result in applied:
+                if result.member_id is not None:
+                    balances[result.member_id] -= row.amount
+                if result.review is None:
+                    report.resolved += 1
+                else:
+                    report.flagged.append(
+                        (row.booking_description, row.amount, result.review)
+                    )
+
     report.journal_files = sorted(
         {
             journal.period_file(journals_dir, config.journal_granularity, b.date)
@@ -144,6 +222,6 @@ def import_bank_export(
     )
     if dry_run:
         report.dry_run_output = output
-    elif bookings:
+    elif bookings or rewrites_applied:
         journal.check(journals_dir)
     return report

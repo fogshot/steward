@@ -22,8 +22,8 @@ If code and docs disagree, the docs win — or the docs are deliberately updated
 
 ## Architectural invariants — never violate these
 
-1. **Steward never writes journal files.** All journal writes go through `hledger import` fed by a Steward-generated enriched CSV and the static `rules/steward.rules` (architecture.md §6).
-2. **Journals are append-only.** Corrections are adjustment entries, never edits. Once-committed periods are never rewritten.
+1. **Steward never writes journal files** — with one scoped exception: review-resolution rewrites of uncommitted, Steward-generated entries (account/tag surgery on the tagged two-posting block, gated by `hledger check`; architecture.md §6, decision #14). All other journal writes go through `hledger import` fed by a Steward-generated enriched CSV and the static `rules/steward.rules`.
+2. **Committed journal entries are immutable.** Uncommitted entries are working state: review flags resolve by hand-edit or by re-running `steward import` (decision #14). Once `steward commit` records an entry in Git, it is never rewritten — corrections are adjustment entries, never edits.
 3. **No personal data in this repository.** Real `members.yaml`, `payer_aliases.yaml`, journals, and bank exports live in a separate private data repo; only `*.example.yaml` files belong here.
 4. **Amounts are decimal strings**, parsed as `Decimal` — never binary floats.
 5. **`rules/steward.rules` stays static** — no conditionals, no content interpretation. All stateful logic (aliases, balances, categories, dedup) lives in Steward.
