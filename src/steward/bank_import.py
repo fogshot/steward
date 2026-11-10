@@ -15,24 +15,43 @@ from .model import (
 )
 from .validate import run_validation
 
+# Beyond this many flagged rows, the report summarizes by reason instead of
+# listing each row — the treasurer's working queue is `hledger print tag:review`.
+MAX_LISTED_FLAGGED = 20
+
 
 @dataclass
 class ImportReport:
-    imported: list[tuple[str, Decimal]] = field(default_factory=list)
-    duplicates: list[tuple[str, Decimal]] = field(default_factory=list)
+    parsed: int = 0
+    imported: int = 0
+    duplicates: int = 0
     flagged: list[tuple[str, Decimal, str]] = field(default_factory=list)
+    journal_files: list[Path] = field(default_factory=list)
     dry_run_output: str = ""
 
     def render(self) -> str:
-        lines = [f"imported: {len(self.imported)}"]
-        for description, amount in self.imported:
-            lines.append(f"  {description}  €{amount:.2f}")
-        lines.append(f"duplicates: {len(self.duplicates)}")
-        for description, amount in self.duplicates:
-            lines.append(f"  {description}  €{amount:.2f}")
-        lines.append(f"flagged: {len(self.flagged)}")
-        for description, amount, reason in self.flagged:
-            lines.append(f"  {description}  €{amount:.2f}  review: {reason}")
+        lines = [
+            f"parsed: {self.parsed}",
+            f"imported: {self.imported}",
+            f"duplicates: {self.duplicates}",
+        ]
+        if self.journal_files:
+            label = "would be written to:" if self.dry_run_output else "written to:"
+            lines.append(label)
+            for path in self.journal_files:
+                lines.append(f"  {path}")
+        lines.append(f"flagged for review: {len(self.flagged)}")
+        if len(self.flagged) <= MAX_LISTED_FLAGGED:
+            for description, amount, reason in self.flagged:
+                lines.append(f"  {description}  €{amount:.2f}  review: {reason}")
+        else:
+            counts: dict[str, int] = {}
+            for _, _, reason in self.flagged:
+                counts[reason] = counts.get(reason, 0) + 1
+            for reason in sorted(counts):
+                lines.append(f"  {reason}: {counts[reason]}")
+        if self.flagged:
+            lines.append("resolve with: hledger print tag:review")
         if self.dry_run_output:
             lines.append("")
             lines.append(self.dry_run_output.rstrip())
@@ -64,12 +83,12 @@ def import_bank_export(
     journals_exist = journals_dir.is_dir()
     existing = journal.query_import_hashes(journals_dir) if journals_exist else set()
 
-    report = ImportReport()
+    report = ImportReport(parsed=len(rows))
     survivors: list[tuple[bank.BankRow, str]] = []
     for row in rows:
         fp = bank.fingerprint(row)
         if fp in existing:
-            report.duplicates.append((row.booking_description, row.amount))
+            report.duplicates += 1
         else:
             survivors.append((row, fp))
 
@@ -112,8 +131,14 @@ def import_bank_export(
                 tags=tags,
             )
         )
-        report.imported.append((row.booking_description, row.amount))
+        report.imported += 1
 
+    report.journal_files = sorted(
+        {
+            journal.period_file(journals_dir, config.journal_granularity, b.date)
+            for b in bookings
+        }
+    )
     output = journal.append_bookings(
         journals_dir, bookings, config.journal_granularity, dry_run=dry_run
     )

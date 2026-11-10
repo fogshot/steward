@@ -128,10 +128,10 @@ def test_reimporting_same_file_drops_all_rows(tmp_path: Path) -> None:
     root = make_repo(tmp_path)
     export = write_export(root, ["2026-02-03;120.00;John Doe;membership dues;DE001"])
     first = import_bank_export(root, export, "test-bank")
-    assert len(first.imported) == 1
+    assert first.imported == 1
     second = import_bank_export(root, export, "test-bank")
-    assert second.imported == []
-    assert len(second.duplicates) == 1
+    assert second.imported == 0
+    assert second.duplicates == 1
     assert journal_text(root).count("membership dues") == 1
 
 
@@ -165,7 +165,7 @@ def test_dry_run_prints_transactions_and_writes_nothing(tmp_path: Path) -> None:
     root = make_repo(tmp_path)
     export = write_export(root, ["2026-02-03;120.00;John Doe;membership dues;DE001"])
     report = import_bank_export(root, export, "test-bank", dry_run=True)
-    assert len(report.imported) == 1
+    assert report.imported == 1
     assert "John Doe | membership dues" in report.dry_run_output
     assert journal_text(root) == ""
 
@@ -192,8 +192,8 @@ def test_overlapping_reexport_new_filename_and_order(tmp_path: Path) -> None:
     report = import_bank_export(
         root, write_export(root, reordered, "export-2026-02.csv"), "test-bank"
     )
-    assert report.imported == []
-    assert len(report.duplicates) == 2
+    assert report.imported == 0
+    assert report.duplicates == 2
     assert journal_text(root).count("import-hash:") == 2
 
 
@@ -216,9 +216,9 @@ def test_reworded_description_with_stable_reference_still_dedups(
     second = import_bank_export(
         root, ref_export("b.csv", "reworded purpose line"), "test-bank-ref"
     )
-    assert len(first.imported) == 1
-    assert second.imported == []
-    assert len(second.duplicates) == 1
+    assert first.imported == 1
+    assert second.imported == 0
+    assert second.duplicates == 1
 
 
 def test_installment_payment_books_partial_clearing(tmp_path: Path) -> None:
@@ -310,7 +310,9 @@ def test_aborts_when_validation_fails(tmp_path: Path) -> None:
     assert journal_text(root) == ""
 
 
-def test_report_render_lists_counts_and_flagged_rows(tmp_path: Path) -> None:
+def test_report_render_lists_counts_flagged_rows_and_journal_files(
+    tmp_path: Path,
+) -> None:
     root = make_repo(tmp_path)
     export = write_export(
         root,
@@ -321,11 +323,45 @@ def test_report_render_lists_counts_and_flagged_rows(tmp_path: Path) -> None:
     )
     report = import_bank_export(root, export, "test-bank")
     rendered = report.render()
+    assert "parsed: 2" in rendered
     assert "imported: 2" in rendered
     assert "duplicates: 0" in rendered
-    assert "flagged: 1" in rendered
+    assert "flagged for review: 1" in rendered
     assert "Unknown Person | donation?" in rendered
     assert "review: unmatched" in rendered
+    assert "written to:" in rendered
+    assert "2026/01.journal" in rendered
+    assert "2026/02.journal" in rendered
+    assert "hledger print tag:review" in rendered
+    # imported rows are not listed individually — only flagged ones
+    assert "account fee" not in rendered.split("written to:")[0].replace(
+        "flagged for review", ""
+    )
+
+
+def test_report_render_dry_run_marks_files_as_would_be_written(
+    tmp_path: Path,
+) -> None:
+    root = make_repo(tmp_path)
+    export = write_export(root, ["2026-02-03;120.00;John Doe;membership dues;DE001"])
+    report = import_bank_export(root, export, "test-bank", dry_run=True)
+    assert "would be written to:" in report.render()
+
+
+def test_report_render_summarizes_many_flagged_rows_by_reason(
+    tmp_path: Path,
+) -> None:
+    root = make_repo(tmp_path)
+    rows = [
+        f"2026-01-{day:02d};-9.99;Shop {day};purchase {day};DE001"
+        for day in range(1, 26)
+    ]
+    report = import_bank_export(root, write_export(root, rows), "test-bank")
+    rendered = report.render()
+    assert "flagged for review: 25" in rendered
+    assert "  uncategorized: 25" in rendered
+    assert "Shop 1" not in rendered  # individual rows not listed
+    assert "hledger print tag:review" in rendered
 
 
 def test_cli_import(tmp_path: Path) -> None:

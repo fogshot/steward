@@ -124,7 +124,7 @@ def query_receivable_balance(journals_dir: Path, member_id: str) -> Decimal:
     return _receivables_sum(journals_dir, f"tag:member-id={member_id}")
 
 
-def _period_file(journals_dir: Path, granularity: str, day: date) -> Path:
+def period_file(journals_dir: Path, granularity: str, day: date) -> Path:
     if granularity == "yearly":
         return journals_dir / f"{day.year}.journal"
     return journals_dir / f"{day.year:04d}" / f"{day.month:02d}.journal"
@@ -169,7 +169,7 @@ def append_bookings(
 
     by_period: dict[Path, list[Booking]] = {}
     for booking in bookings:
-        target = _period_file(journals_dir, granularity, booking.date)
+        target = period_file(journals_dir, granularity, booking.date)
         by_period.setdefault(target, []).append(booking)
 
     output: list[str] = []

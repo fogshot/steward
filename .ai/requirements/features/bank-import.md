@@ -32,7 +32,7 @@ steward import <bank-export> --format <mapping> [--dry-run]
    - Non-member rows → first-match-wins against `categorization.yaml`; no match → suspense account (`expenses:unknown` / `income:unknown`, sign-dependent) + `; review: unmatched` (incoming — unknown payer, e.g. a third-party payer) or `; review: uncategorized` (outgoing — unknown expense). See decision #12.
    - The amount check compares against the member's running receivable balance: when one file contains several payments for the same member, each row is checked against the remainder after the preceding rows.
 5. **Render** through the `hledger import` write path (§6), grouped by posting month.
-6. **Report** to stdout: imported count, dropped duplicates, and every flagged row with its `review:` reason.
+6. **Report** to stdout as a run summary: parsed count, imported count, dropped-duplicate count, the journal file(s) written (or that would be written, with `--dry-run`), and the flagged rows with their `review:` reasons. Imported and duplicate rows are **not** listed individually — they need no action. Flagged rows are listed individually up to a threshold (20), beyond which they are summarized by reason; the report then points to `hledger print tag:review`, the treasurer's working queue.
 
 ## 5. Edge Cases
 
@@ -51,5 +51,6 @@ steward import <bank-export> --format <mapping> [--dry-run]
 - Re-importing the same file: zero new transactions, report shows all rows as duplicates.
 - A row whose payer alias matches and whose amount equals the member's receivable gets a `member-id` tag and a receivable-clearing posting, no `review:` tag.
 - An unknown payer lands in a suspense account with `review: uncategorized` or `review: unmatched` and appears in the report.
+- The report shows counts (parsed/imported/duplicates), the written journal file(s), and flagged rows with their reasons — individually up to 20, summarized by reason beyond that.
 - `--dry-run` prints the transactions and writes nothing.
 - After a real run, `hledger check` passes (write-path gate).
