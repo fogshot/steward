@@ -93,7 +93,7 @@ Signed commits prove *who* recorded each period and make tags unforgeable. One-t
 1. **Create a key** if you don't have one: `gpg --full-generate-key` (RSA, at least 3072 bits; use your own name and email). List your keys with `gpg --list-secret-keys --keyid-format=long` and note the key ID (the part after `rsa3072/`).
 2. **Tell Git to use it**: `git config --global user.signingkey <key-id>`.
 3. **Enable signing** in `steward.yaml`: set `closing.sign: true`. From now on `steward commit` signs every commit; it fails if the key is missing or the passphrase can't be entered.
-4. **Back up the key** (`gpg --export-secret-keys <key-id> > key.gpg`, stored safely) and plan to hand it over with the treasury — see Handover.
+4. **Back up the key** (`gpg --export-secret-keys <key-id> > key.gpg`, stored safely). The key is *yours* — it is never handed over; a successor creates their own (see Handover).
 
 #### Optional: push to a remote
 
@@ -131,7 +131,7 @@ A successor takes over with:
 
 Smoke test for the new treasurer: `steward validate` must pass. If possible, walk through one full cycle together: import a statement, resolve flags, commit.
 
-Hand over alongside the repository: online-banking access, the GPG key if commits are signed, and any open `review:` flags with context.
+Hand over alongside the repository: online-banking access and any open `review:` flags with context. If commits are signed, the successor creates **their own** GPG key and configures it (`user.signingkey`) — signing keys are never transferred: a key proves *who* signed, and past commits stay verifiable against the previous treasurer's public key.
 
 ## Everyday queries
 
