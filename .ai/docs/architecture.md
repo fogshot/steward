@@ -360,7 +360,7 @@ Normalization before hashing:
 
 Enforcement: before rendering, Steward drops every row whose fingerprint already appears as an `; import-hash:` tag in `journals/`. The fingerprint is then written into the transaction as that tag, making the journal itself the dedup database.
 
-**Re-resolution** (decision #14): a duplicate row whose journal entry is **uncommitted** and flagged `review: unmatched | uncategorized` is not just dropped — it is re-classified against the current `payer_aliases.yaml` / `categorization.yaml`. When classification now resolves the row, Steward rewrites the entry's non-bank posting account and tags in place (amounts never change) and reports it as resolved. Committed entries — fingerprints present in `HEAD` — are never touched; they resolve via adjustment entries (§5.3, §10.4). `partial` / `overpaid` / `ambiguous` flags are human decisions and are never re-resolved automatically.
+**Re-resolution** (decision #14): a duplicate row whose journal entry is **uncommitted** and flagged `review:` is not just dropped — it is re-classified against the current `payer_aliases.yaml` / `categorization.yaml`. When classification now resolves the row, Steward rewrites the entry's non-bank posting account and tags in place (amounts never change) and reports it as resolved. Committed entries — fingerprints present in `HEAD` — are never touched; they resolve via adjustment entries (§5.3, §10.4).
 
 Known limitation: rows without a stable reference remain vulnerable to description rewording between exports; such duplicates must be resolved manually.
 
