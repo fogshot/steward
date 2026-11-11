@@ -234,6 +234,59 @@ def test_installment_payment_books_partial_clearing(tmp_path: Path) -> None:
     assert query_receivable_balance(root / "journals", "1001") == Decimal("60.0")
 
 
+@pytest.mark.parametrize(
+    ("amount", "expected_review", "remaining"),
+    [
+        ("120.00", None, Decimal("120.00")),
+        ("60.00", "partial", Decimal("180.00")),
+        ("180.00", None, Decimal("60.00")),
+        ("250.00", "overpaid", Decimal("-10.00")),
+    ],
+)
+def test_payment_with_multiple_years_outstanding(
+    tmp_path: Path, amount: str, expected_review: str | None, remaining: Decimal
+) -> None:
+    root = make_repo(tmp_path)
+    generate_dues(root, 2025, booking_date=date(2025, 1, 1))
+    generate_dues(root, 2026, booking_date=date(2026, 1, 1))
+    export = write_export(root, [f"2026-02-03;{amount};John Doe;dues;DE001"])
+    report = import_bank_export(root, export, "test-bank")
+    assert [reason for _, _, reason in report.flagged] == (
+        [expected_review] if expected_review else []
+    )
+    assert query_receivable_balance(root / "journals", "1001") == remaining
+
+
+def test_booking_year_dues_use_proration_for_historical_import(tmp_path: Path) -> None:
+    root = make_repo(tmp_path)
+    members = (root / "members.yaml").read_text()
+    members = members.replace('"2022-01-01"', '"2025-07-01"')
+    (root / "members.yaml").write_text(members)
+    generate_dues(root, 2025, booking_date=date(2025, 1, 1))
+    generate_dues(root, 2026, booking_date=date(2026, 1, 1))
+    export = write_export(root, ["2025-08-03;60.00;John Doe;dues;DE001"])
+    report = import_bank_export(root, export, "test-bank")
+    assert report.flagged == []
+    assert query_receivable_balance(root / "journals", "1001") == Decimal("120")
+
+
+def test_no_booking_year_dues_falls_back_to_total_balance(tmp_path: Path) -> None:
+    root = make_repo(tmp_path)
+    members = (
+        (root / "members.yaml")
+        .read_text()
+        .replace(
+            '      - joined: "2022-01-01"\n        left: null',
+            '      - joined: "2022-01-01"\n        left: "2025-12-31"',
+        )
+    )
+    (root / "members.yaml").write_text(members)
+    generate_dues(root, 2025, booking_date=date(2025, 1, 1))
+    export = write_export(root, ["2026-02-03;60.00;John Doe;dues;DE001"])
+    report = import_bank_export(root, export, "test-bank")
+    assert [reason for _, _, reason in report.flagged] == ["partial"]
+
+
 def test_overpayment_flagged(tmp_path: Path) -> None:
     root = make_repo(tmp_path)
     accrue_2026(root)
@@ -426,6 +479,21 @@ def test_reimport_with_new_alias_resolves_to_member_clearing(tmp_path: Path) -> 
     assert "assets:receivables:dues" in text
     assert "review:" not in text
     assert query_receivable_balance(root / "journals", "1001") == 0
+
+
+def test_reimport_with_new_alias_uses_booking_year_dues(tmp_path: Path) -> None:
+    root = make_repo(tmp_path)
+    generate_dues(root, 2025, booking_date=date(2025, 1, 1))
+    generate_dues(root, 2026, booking_date=date(2026, 1, 1))
+    export = write_export(root, ["2026-02-03;120.00;J. Doe;dues;DE001"])
+    import_bank_export(root, export, "test-bank")
+    aliases = (root / "payer_aliases.yaml").read_text()
+    (root / "payer_aliases.yaml").write_text(aliases + '    - "J. Doe"\n')
+
+    report = import_bank_export(root, export, "test-bank")
+    assert report.resolved == 1
+    assert report.flagged == []
+    assert query_receivable_balance(root / "journals", "1001") == Decimal("120")
 
 
 def test_committed_entries_are_never_rewritten(tmp_path: Path) -> None:

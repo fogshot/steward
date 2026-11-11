@@ -150,21 +150,22 @@ aliases:
 - Aliases map **payers**, not just members: a third party paying on a member's behalf (e.g. a parent or spouse) is added to that member's alias list.
 - Matching is case-insensitive, ignores extra whitespace, and compares against the payee/sender field of a bank transaction.
 
-**Match confidence** (decision #4 in the HLD) — matching is automatic, with low-confidence results flagged for review instead of confirmed interactively:
+**Match confidence** (decisions #4 and #15 in the HLD) — matching is automatic, with low-confidence results flagged for review instead of confirmed interactively:
 
-- **High confidence** — exactly one member matches **and** the amount equals that member's total outstanding dues receivable (across all periods, per decision #7): the clearing posting (§5.2) is booked automatically.
+- **High confidence** — exactly one member matches and neither the partial nor the overpaid condition below applies: the clearing posting (§5.2) is booked automatically.
 - **Low confidence** — the row is still imported, but carries a `; review: <reason>` tag and appears in a post-import report:
 
   | `review` value | Condition | Typical resolution |
   |----------------|-----------|--------------------|
   | `unmatched` | Incoming row: no alias matches the payer and no `categorization.yaml` rule matches | Add an alias (e.g. third-party payer), or categorize as non-dues income/expense |
   | `ambiguous` | Multiple members match | Pick the member manually |
-  | `partial` | Alias matches, amount < outstanding receivable | Installment payment: book the partial clearing; the remainder stays open |
+  | `partial` | Alias matches, amount is less than both the outstanding receivable and the positive dues calculated for the payment's booking year; if those dues are zero, compare with the outstanding receivable instead | Installment payment: book the partial clearing; the remainder stays open |
   | `overpaid` | Alias matches, amount > outstanding receivable | Decide manually: donation, next period's dues, or refund |
   | `uncategorized` | Outgoing row matching no rule in `categorization.yaml` (§3.4) | Edit the journal entry, or add a rule so future rows self-categorize |
 
 - Review state is plain journal metadata: everything awaiting attention is one hledger query away (`hledger print tag:review`). Resolution depends on commit state (decision #14): an **uncommitted** flagged row resolves itself the next time `steward import` re-processes that row with covering rules/aliases (or can be edited by hand); a **committed** flagged row is immutable and is resolved by a later adjustment entry (§5.3).
 - The alias check runs against the normalized payer name of **incoming payments only** — an outgoing row to a member (e.g. a refund) is never a dues clearing and falls through to categorization. The amount check runs against the member's current `assets:receivables:dues` balance as reported by hledger.
+- The booking-year dues threshold is calculated from `members.yaml` using the same annual proration and rate resolution as `generate-dues`, regardless of whether that year's accrual has been booked. It is a review heuristic, not a payment allocation: payments still clear the total balance. Existing `partial` flags are not automatically changed.
 
 ### 3.4 `categorization.yaml` — non-member transaction rules
 

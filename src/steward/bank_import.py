@@ -7,10 +7,12 @@ from decimal import Decimal
 from pathlib import Path
 
 from . import bank, journal, resolve
+from .dues import compute_dues
 from .model import (
     load_bank_formats,
     load_categorization,
     load_config,
+    load_members,
     load_payer_aliases,
 )
 from .validate import run_validation
@@ -84,6 +86,8 @@ def import_bank_export(
         )
 
     config, _ = load_config(root / "steward.yaml")
+    members, _ = load_members(root / "members.yaml")
+    members_by_id = {member.id: member for member in members.members}
     aliases, _ = load_payer_aliases(root / "payer_aliases.yaml")
     categorization, _ = load_categorization(root / "categorization.yaml")
     formats, _ = load_bank_formats(root / "bank_formats.yaml")
@@ -121,6 +125,7 @@ def import_bank_export(
     # classified: a second payment to the same member in one file is
     # compared against the remainder, not the stale opening balance.
     balances: dict[str, Decimal] = {}
+    annual_dues: dict[tuple[str, int], Decimal] = {}
 
     def balance_for(member_id: str) -> Decimal:
         if member_id not in balances:
@@ -136,8 +141,19 @@ def import_bank_export(
         matched = (
             {member_ids[0]: balance_for(member_ids[0])} if len(member_ids) == 1 else {}
         )
+        booking_year_dues = None
+        if len(member_ids) == 1:
+            member_id = member_ids[0]
+            key = (member_id, row.date.year)
+            if key not in annual_dues:
+                annual_dues[key] = compute_dues(
+                    members_by_id[member_id], members, row.date.year, config.proration
+                )
+            booking_year_dues = annual_dues[key]
         category = bank.categorize(row.payee, row.description, categorization)
-        return bank.classify(row, member_ids, matched, category)
+        return bank.classify(
+            row, member_ids, matched, category, booking_year_dues=booking_year_dues
+        )
 
     bookings: list[journal.Booking] = []
     for row, fp in survivors:

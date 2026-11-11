@@ -70,7 +70,7 @@ hledger print tag:review
 |--------|---------|------------|
 | `unmatched` | Incoming payment, payer unknown | Add the payer to the member's aliases in `payer_aliases.yaml` (or a rule to `categorization.yaml`), then re-run the import — the entry resolves itself |
 | `ambiguous` | Payer matches several members | Pick the member manually |
-| `partial` | Installment: amount below the open balance | Nothing to fix — the remainder stays open; remove the tag to acknowledge |
+| `partial` | Payment below both the open balance and the dues calculated for its booking year (or below the open balance if those dues are zero) | The remainder stays open; review the installment and remove the tag to acknowledge |
 | `overpaid` | Amount above the open balance | Decide: donation, next year's dues, or refund; adjust the entry accordingly |
 | `uncategorized` | Outgoing payment matching no rule | Add a rule to `categorization.yaml`, then re-run the import — the entry resolves itself |
 

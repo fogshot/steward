@@ -423,6 +423,30 @@ def test_classify_partial_payment() -> None:
     assert result.review == "partial"
 
 
+@pytest.mark.parametrize(
+    ("amount", "balance", "year_dues", "expected"),
+    [
+        ("120", "240", "120", None),
+        ("180", "240", "120", None),
+        ("60", "240", "120", "partial"),
+        ("60", "60", "120", None),
+        ("61", "60", "120", "overpaid"),
+        ("60", "240", "0", "partial"),
+    ],
+)
+def test_classify_booking_year_dues_threshold(
+    amount: str, balance: str, year_dues: str, expected: str | None
+) -> None:
+    result = classify(
+        row(amount=Decimal(amount)),
+        ["1001"],
+        {"1001": Decimal(balance)},
+        None,
+        booking_year_dues=Decimal(year_dues),
+    )
+    assert result.review == expected
+
+
 def test_classify_overpayment() -> None:
     result = classify(
         row(amount=Decimal("150.00")), ["1001"], {"1001": Decimal("120.00")}, None

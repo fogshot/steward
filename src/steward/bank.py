@@ -303,12 +303,14 @@ def classify(
     member_ids: list[str],
     balances: Mapping[str, Decimal],
     category: str | None,
+    *,
+    booking_year_dues: Decimal | None = None,
 ) -> Classification:
     """Match confidence and posting accounts for one row (§3.3, §5.2).
 
     Member matching applies to incoming payments only. High confidence
-    requires exactly one alias match and an amount equal to the member's
-    outstanding receivable. Incoming rows with no alias and no category rule
+    uses the booking year's dues and the total outstanding receivable.
+    Incoming rows with no alias and no category rule
     are `unmatched` (unknown payer, e.g. a third-party payer); outgoing rows
     matching no rule are `uncategorized` (unknown expense).
     """
@@ -317,10 +319,14 @@ def classify(
             member_id = member_ids[0]
             balance = balances.get(member_id, Decimal(0))
             review = None
-            if row.amount < balance:
-                review = "partial"
-            elif row.amount > balance:
+            if row.amount > balance:
                 review = "overpaid"
+            elif row.amount < balance and (
+                booking_year_dues is None
+                or booking_year_dues <= 0
+                or row.amount < booking_year_dues
+            ):
+                review = "partial"
             return Classification(
                 BANK_ACCOUNT, RECEIVABLES_ACCOUNT, row.amount, member_id, review
             )
