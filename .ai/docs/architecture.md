@@ -159,12 +159,12 @@ aliases:
   | `review` value | Condition | Typical resolution |
   |----------------|-----------|--------------------|
   | `unmatched` | Incoming row: no alias matches the payer and no `categorization.yaml` rule matches | Add an alias (e.g. third-party payer), or categorize as non-dues income/expense |
-  | `ambiguous` | Multiple members match | Pick the member manually |
+  | `ambiguous` | Multiple members match | Correct overlapping aliases and re-import, or pick the member manually |
   | `partial` | Alias matches, amount is less than both the outstanding receivable and the positive dues calculated for the payment's booking year; if those dues are zero, compare with the outstanding receivable instead | Installment payment: book the partial clearing; the remainder stays open |
   | `overpaid` | Alias matches, amount > outstanding receivable | Decide manually: donation, next period's dues, or refund |
   | `uncategorized` | Outgoing row matching no rule in `categorization.yaml` (§3.4) | Edit the journal entry, or add a rule so future rows self-categorize |
 
-- Review state is plain journal metadata: everything awaiting attention is one hledger query away (`hledger print tag:review`). Resolution depends on commit state (decision #14): an **uncommitted** flagged row resolves itself the next time `steward import` re-processes that row with covering rules/aliases (or can be edited by hand); a **committed** flagged row is immutable and is resolved by a later adjustment entry (§5.3).
+- Review state is plain journal metadata: everything awaiting attention is one hledger query away (`hledger print tag:review`). Resolution depends on commit state (decision #14): eligible **uncommitted** flagged rows can be re-classified when `steward import` re-processes them with updated rules/aliases (or can be edited by hand); a **committed** flagged row is immutable and is resolved by a later adjustment entry (§5.3).
 - The alias check runs against the normalized payer name of **incoming payments only** — an outgoing row to a member (e.g. a refund) is never a dues clearing and falls through to categorization. The amount check runs against the member's current `assets:receivables:dues` balance as reported by hledger.
 - The booking-year dues threshold is calculated from `members.yaml` using the same annual proration and rate resolution as `generate-dues`, regardless of whether that year's accrual has been booked. It is a review heuristic, not a payment allocation: payments still clear the total balance. Existing `partial` flags are not automatically changed.
 
@@ -331,7 +331,7 @@ All journal writes flow through a single pipeline:
 
 Consequences:
 
-- **One writer.** Journal syntax, amount alignment, and tag formatting are owned by hledger; Steward cannot emit a malformed journal. The single exception is review resolution (decision #14): `steward import` rewrites the account and tags of an uncommitted `review: unmatched | uncategorized` entry in place when current rules/aliases resolve it. The rewrite is text surgery restricted to Steward-generated two-posting blocks whose shape and amounts match the bank row exactly — anything unexpected is left untouched for manual resolution — and the `hledger check` gate (step 4) runs afterwards.
+- **One writer.** Journal syntax, amount alignment, and tag formatting are owned by hledger; Steward cannot emit a malformed journal. The single exception is review resolution (decision #14): `steward import` rewrites the account and tags of an eligible uncommitted review entry in place when its classification changes. The rewrite is text surgery restricted to Steward-generated two-posting blocks whose shape and amounts match the bank row exactly — anything unexpected is left untouched for manual resolution — and the `hledger check` gate (step 4) runs afterwards.
 - **`--dry-run` for free.** Steward's `--dry-run` maps to `hledger import --dry-run`, which prints the transactions that would be appended and writes nothing.
 - **hledger's built-in overlap detection is deliberately bypassed.** `import` tracks a `.latest.<file>` state file per *stable* input filename (latest imported date, plus the count of same-date records). Steward feeds it a fresh temp file of already-deduplicated rows, so no `.latest` state ever applies; deduplication is Steward's content-hash pre-filter (§7.2), which is robust against overlapping re-exports.
 - **Limitations.** One CSV row yields one two-posting transaction — sufficient for all posting models in §5. Rare multi-split transactions (e.g. one bank payout covering both dues and a donation) are entered manually with `hledger add`. Steward ensures the target period's journal file (and its year directory) exists, creating it empty if needed, before invoking `import`.
@@ -360,7 +360,7 @@ Normalization before hashing:
 
 Enforcement: before rendering, Steward drops every row whose fingerprint already appears as an `; import-hash:` tag in `journals/`. The fingerprint is then written into the transaction as that tag, making the journal itself the dedup database.
 
-**Re-resolution** (decision #14): a duplicate row whose journal entry is **uncommitted** and flagged `review:` is not just dropped — it is re-classified against the current `payer_aliases.yaml` / `categorization.yaml`. When classification now resolves the row, Steward rewrites the entry's non-bank posting account and tags in place (amounts never change) and reports it as resolved. Committed entries — fingerprints present in `HEAD` — are never touched; they resolve via adjustment entries (§5.3, §10.4).
+**Re-resolution** (decisions #14 and #17): eligible uncommitted review entries are re-classified against the current `payer_aliases.yaml` / `categorization.yaml` as specified in the [bank-import PRD](../requirements/features/bank-import.md). When classification changes, Steward rewrites the entry's non-bank posting account and tags in place (amounts never change). Committed entries — fingerprints present in `HEAD` — are never touched; they resolve via adjustment entries (§5.3, §10.4).
 
 Known limitation: rows without a stable reference remain vulnerable to description rewording between exports; such duplicates must be resolved manually.
 

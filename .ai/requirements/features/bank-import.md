@@ -26,7 +26,7 @@ steward import <bank-export> --format <mapping> [--dry-run]
 
 1. **Parse** through the named format mapping into the internal transaction model: `date` (booking date, never value date), `amount` (signed `Decimal`), `currency`, `payee`, `description`, `reference`, `account`. Parsers must not assume row order.
 2. **Sort** rows by date (presentation normalization for human-readable journals; not correctness).
-3. **Deduplicate.** Compute `SHA-256(account | date | amount | payee | description-or-reference)` per row (normalization rules in §7.2; a stable end-to-end `reference` replaces `description` when extracted). Rows whose fingerprint already appears as an `; import-hash:` tag are duplicates — with one exception: a duplicate whose journal entry is **uncommitted** and flagged `review: unmatched | uncategorized` is re-classified against the current aliases/rules, and if it now resolves, the entry is rewritten in place (non-bank posting account and tags; amounts never change) and reported as resolved (decision #14). Committed entries and `partial`/`overpaid`/`ambiguous` flags are never re-resolved.
+3. **Deduplicate.** Compute `SHA-256(account | date | amount | payee | description-or-reference)` per row (normalization rules in §7.2; a stable end-to-end `reference` replaces `description` when extracted). Rows whose fingerprint already appears as an `; import-hash:` tag are duplicates — with one exception: a duplicate whose journal entry is **uncommitted** and flagged `review: unmatched | uncategorized | ambiguous` is re-classified against the current aliases/rules, and if its classification changes, the entry is rewritten in place (non-bank posting account and tags; amounts never change). It is reported as resolved only if no review reason remains (decisions #14 and #17). Committed entries and `partial`/`overpaid` flags are never re-resolved.
 4. **Match & categorize** each surviving row (member matching applies to incoming payments only — an outgoing row to a member is a refund or similar, never a dues clearing):
    - A unique alias match books the clearing posting (§5.2) with `member-id`; the amount determines whether review is needed using the thresholds in architecture §3.3.
    - A payment below both the total outstanding balance and the positive dues for its booking year is flagged `partial`; a payment above the total balance is flagged `overpaid`. Multiple members matching → suspense account, no `member-id`, flagged `ambiguous`.
@@ -41,6 +41,7 @@ steward import <bank-export> --format <mapping> [--dry-run]
 |------|----------|
 | Overlapping re-export (same rows, new filename/order) | All duplicates dropped; nothing appended |
 | Re-import after adding a rule/alias | Uncommitted `unmatched`/`uncategorized` entries covered by the new rule/alias are rewritten in place and reported as resolved; committed entries stay flagged (resolve via adjustment) |
+| Re-import after correcting overlapping aliases | Uncommitted `ambiguous` entries are re-classified; a unique match clears the ambiguity but may retain an amount-related review flag. Committed entries stay untouched. |
 | Bank rewords descriptions between exports | Rows with a stable end-to-end reference still dedup; others may duplicate → manual resolution (known limitation, §7.2) |
 | Installment payment (amount below both booking-year dues and total receivable) | Partial clearing booked, flagged `review: partial` |
 | A full year's dues paid while older dues remain outstanding | Clearing booked without a `partial` flag; the remaining total receivable stays open |
@@ -54,6 +55,7 @@ steward import <bank-export> --format <mapping> [--dry-run]
 - Re-importing the same file: zero new transactions, report shows all rows as duplicates.
 - Re-importing after adding a categorization rule: uncommitted `uncategorized` entries matching the rule are rewritten to the rule's account with the `review:` tag removed, reported as resolved, and `hledger check` still passes; committed entries are untouched.
 - Re-importing after adding a payer alias: an uncommitted `unmatched` entry gains the `member-id` tag and the receivable-clearing posting account.
+- Re-importing after correcting overlapping aliases: an uncommitted `ambiguous` entry is re-classified and rewritten when its classification changes; an unchanged ambiguity remains flagged, and a unique match may still be flagged `partial` or `overpaid`. Committed entries are untouched.
 - A row whose payer alias matches and whose amount equals the member's receivable gets a `member-id` tag and a receivable-clearing posting, no `review:` tag.
 - Alias regexes search the normalized payer name case-insensitively: a name pattern matches the same name with a title; patterns matching different members produce `review: ambiguous`.
 - With €240 outstanding for two €120 years, a €120 payment is not flagged `partial`, while a €60 payment is; €120 remains outstanding after the full-year payment.

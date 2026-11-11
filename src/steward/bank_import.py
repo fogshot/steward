@@ -22,8 +22,8 @@ from .validate import run_validation
 MAX_LISTED_FLAGGED = 20
 
 # Review reasons that re-importing re-resolves against current rules/aliases
-# (decision #14). partial/overpaid/ambiguous are human decisions.
-RE_RESOLVABLE = ("unmatched", "uncategorized")
+# (decisions #14 and #17). partial/overpaid are human decisions.
+RE_RESOLVABLE = ("unmatched", "uncategorized", "ambiguous")
 
 
 @dataclass

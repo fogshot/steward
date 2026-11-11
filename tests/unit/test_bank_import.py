@@ -505,6 +505,82 @@ def test_reimport_with_new_alias_resolves_to_member_clearing(tmp_path: Path) -> 
     assert query_receivable_balance(root / "journals", "1001") == 0
 
 
+@pytest.mark.parametrize(
+    "committed,dry_run", [(False, False), (True, False), (False, True)]
+)
+def test_reimport_resolves_ambiguous_after_alias_change(
+    tmp_path: Path, committed: bool, dry_run: bool
+) -> None:
+    root = make_repo(tmp_path)
+    members = (root / "members.yaml").read_text()
+    members += MEMBERS[MEMBERS.index('  - id: "1001"') :].replace("1001", "1002")
+    (root / "members.yaml").write_text(members)
+    (root / "payer_aliases.yaml").write_text(
+        'aliases:\n  "1001": ["John Doe"]\n  "1002": ["Dr. John"]\n'
+    )
+    accrue_2026(root)
+    export = write_export(root, ["2026-02-03;120.00;Dr. John Doe;dues;DE001"])
+    first = import_bank_export(root, export, "test-bank")
+    assert [reason for _, _, reason in first.flagged] == ["ambiguous"]
+    before = journal_text(root)
+
+    unchanged = import_bank_export(root, export, "test-bank")
+    assert unchanged.resolved == 0
+    assert unchanged.duplicates == 1
+    assert [reason for _, _, reason in unchanged.flagged] == ["ambiguous"]
+    assert journal_text(root) == before
+
+    if committed:
+        git_commit_all(root)
+    (root / "payer_aliases.yaml").write_text('aliases:\n  "1001": ["John Doe"]\n')
+    report = import_bank_export(root, export, "test-bank", dry_run=dry_run)
+    assert report.imported == 0
+    if committed:
+        assert report.resolved == 0
+        assert report.duplicates == 1
+        assert report.committed_flagged == 1
+        assert journal_text(root) == before
+    else:
+        assert report.resolved == 1
+        assert report.duplicates == 0
+        assert report.flagged == []
+        if dry_run:
+            assert journal_text(root) == before
+        else:
+            text = (root / "journals" / "2026" / "02.journal").read_text()
+            assert text.count("import-hash:") == 1
+            assert "member-id: 1001" in text
+            assert "assets:receivables:dues" in text
+            assert "income:unknown" not in text
+            assert "review:" not in text
+            assert query_receivable_balance(root / "journals", "1001") == 0
+            check(root / "journals")
+
+
+def test_reimport_ambiguous_can_change_to_partial_review(tmp_path: Path) -> None:
+    root = make_repo(tmp_path)
+    members = (root / "members.yaml").read_text()
+    members += MEMBERS[MEMBERS.index('  - id: "1001"') :].replace("1001", "1002")
+    (root / "members.yaml").write_text(members)
+    (root / "payer_aliases.yaml").write_text(
+        'aliases:\n  "1001": ["John Doe"]\n  "1002": ["Dr. John"]\n'
+    )
+    accrue_2026(root)
+    export = write_export(root, ["2026-02-03;60.00;Dr. John Doe;dues;DE001"])
+    assert import_bank_export(root, export, "test-bank").flagged[0][2] == "ambiguous"
+    (root / "payer_aliases.yaml").write_text('aliases:\n  "1001": ["John Doe"]\n')
+
+    report = import_bank_export(root, export, "test-bank")
+    assert report.resolved == 0
+    assert [reason for _, _, reason in report.flagged] == ["partial"]
+    text = (root / "journals" / "2026" / "02.journal").read_text()
+    assert "member-id: 1001" in text
+    assert "review: partial" in text
+    assert "review: ambiguous" not in text
+    assert query_receivable_balance(root / "journals", "1001") == Decimal("60")
+    check(root / "journals")
+
+
 def test_reimport_new_regex_alias_matches_payer_with_title(tmp_path: Path) -> None:
     root = make_repo(tmp_path)
     accrue_2026(root)

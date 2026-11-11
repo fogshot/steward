@@ -2,8 +2,8 @@
 
 The single scoped exception to "Steward never writes journal files": when a
 re-imported bank row is now covered by current aliases/rules, its uncommitted
-`review: unmatched | uncategorized` entry is rewritten in place — the non-bank
-posting account and the header tags change, amounts never do.
+`review: unmatched | uncategorized | ambiguous` entry is rewritten in place —
+the non-bank posting account and the header tags change, amounts never do.
 
 rewrite_entry is a pure text transformation with strict shape validation: it
 only touches Steward-generated two-posting blocks whose shape and amounts

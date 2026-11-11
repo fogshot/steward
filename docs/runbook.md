@@ -71,12 +71,12 @@ hledger print tag:review
 | Reason | Meaning | Resolution |
 |--------|---------|------------|
 | `unmatched` | Incoming payment, payer unknown | Add the payer to the member's aliases in `payer_aliases.yaml` (or a rule to `categorization.yaml`), then re-run the import — the entry resolves itself |
-| `ambiguous` | Payer matches several members | Pick the member manually |
+| `ambiguous` | Payer matches several members | Correct overlapping aliases in `payer_aliases.yaml` and re-run the import, or pick the member manually |
 | `partial` | Payment below both the open balance and the dues calculated for its booking year (or below the open balance if those dues are zero) | The remainder stays open; review the installment and remove the tag to acknowledge |
 | `overpaid` | Amount above the open balance | Decide: donation, next year's dues, or refund; adjust the entry accordingly |
 | `uncategorized` | Outgoing payment matching no rule | Add a rule to `categorization.yaml`, then re-run the import — the entry resolves itself |
 
-The learning loop: adding an alias or rule, then re-running `steward import` with the same export, re-resolves every **uncommitted** flagged entry it covers — account fixed, `review:` tag removed — and makes future rows resolve themselves. A first import of a long history converges in a few rule-and-rerun cycles. You can also edit an uncommitted flagged entry by hand; either way, resolution happens **before commit**. Once an entry is committed it is immutable: resolve it with a later adjustment entry (see Corrections).
+The learning loop: updating aliases or rules, then re-running `steward import` with the same export, re-classifies **uncommitted** `unmatched`, `uncategorized`, and `ambiguous` entries. The account and tags are updated when the classification changes; a `partial` or `overpaid` flag may still require attention. A first import of a long history converges in a few rule-and-rerun cycles. You can also edit an uncommitted flagged entry by hand; either way, resolution happens **before commit**. Once an entry is committed it is immutable: resolve it with a later adjustment entry (see Corrections).
 
 ### Commit — the recording ritual
 
