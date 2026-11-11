@@ -188,7 +188,11 @@ def check_aliases_unique_across_members(
     errors: list[ValidationError] = []
     for member_id, alias_list in aliases.aliases.items():
         for alias in alias_list:
-            key = " ".join(alias.casefold().split())
+            key = (
+                alias
+                if re.search(r"[\\\[\]().*+?{}|^$]", alias)
+                else " ".join(alias.casefold().split())
+            )
             if key in owner and owner[key] != member_id:
                 errors.append(
                     ValidationError(
@@ -199,6 +203,23 @@ def check_aliases_unique_across_members(
                 )
             else:
                 owner[key] = member_id
+    return errors
+
+
+def check_alias_regexes(aliases: PayerAliasesFile) -> list[ValidationError]:
+    errors: list[ValidationError] = []
+    for member_id, alias_list in aliases.aliases.items():
+        for i, alias in enumerate(alias_list):
+            try:
+                re.compile(alias, re.IGNORECASE)
+            except re.error as exc:
+                errors.append(
+                    ValidationError(
+                        ALIASES_FILE,
+                        f"aliases.{member_id}[{i}]",
+                        f"regex does not compile: {exc}",
+                    )
+                )
     return errors
 
 

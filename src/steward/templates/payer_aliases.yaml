@@ -3,10 +3,11 @@
 # Aliases map PAYERS, not just members: a third party paying on a
 # member's behalf (e.g. a parent or spouse) is added to that member's
 # list. Keys must reference member IDs from members.yaml.
-# Matching is case-insensitive and ignores extra whitespace.
+# Aliases are case-insensitive regex searches on the whitespace-normalized payer.
+# Escape literal regex characters and use ^...$ to require an exact match.
 # aliases:
 #   "1001":
 #     - "John Doe"
-#     - "J. Doe"
+#     - 'J\. Doe'
 #     - "Doe, John"
 #     - "Jane Doe"        # third-party payer (spouse) paying for 1001

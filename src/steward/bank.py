@@ -269,12 +269,15 @@ def fingerprint(row: BankRow) -> str:
 
 
 def match_members(payee: str, aliases: PayerAliasesFile) -> list[str]:
-    """Member IDs whose alias list contains the payer; sorted for determinism."""
-    normalized = normalize_text(payee)
+    """Member IDs with a matching payer regex; sorted for determinism."""
+    normalized = " ".join(unicodedata.normalize("NFC", payee).split())
     return sorted(
         member_id
         for member_id, alias_list in aliases.aliases.items()
-        if any(normalize_text(alias) == normalized for alias in alias_list)
+        if any(
+            re.search(unicodedata.normalize("NFC", alias), normalized, re.IGNORECASE)
+            for alias in alias_list
+        )
     )
 
 

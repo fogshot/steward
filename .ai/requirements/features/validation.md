@@ -32,7 +32,7 @@ Rationale (decided 2026-11-09):
 ### 4.1 Schema & referential integrity (Steward)
 
 - `members.yaml`: unique member IDs (never reused); `fee_tiers` entries per tier are ascending by `effective`; `tiers` entries reference defined `fee_tiers` keys and are ascending by `effective`; `membership` periods of one member do not overlap; `fee_overrides` have `start <= end` and do not overlap for the same member; all dates ISO `YYYY-MM-DD`; all amounts quoted decimal strings representing non-negative numbers (zero allowed, e.g. a full waiver; negative amounts are rejected).
-- `payer_aliases.yaml`: every key references an existing member ID; no alias string assigned to two different members.
+- `payer_aliases.yaml`: every key references an existing member ID; alias regexes compile; no alias string assigned to two different members.
 - `categorization.yaml`: every rule's `account` is well-formed; regexes compile.
 - `bank_formats.yaml`: every mapping names a known parser adapter and maps all required internal fields (`date`, `amount`, `payee`, `description`, `account`); when a sample export is available, the mapping parses it without errors.
 - `steward.yaml`: known keys; `journal_granularity`, `dues.proration`, `closing.*` values within their domains.
@@ -66,6 +66,7 @@ General:
 Other files:
 
 - An alias key with no matching member ID fails; the same alias string under two different members fails.
+- An alias with an uncompilable regex fails with its member ID and list position.
 - A `categorization.yaml` rule with an uncompilable regex fails.
 - A `bank_formats.yaml` mapping naming an unknown parser adapter, or missing a required internal field, fails.
 - A `steward.yaml` with an unknown key or an out-of-domain value (`journal_granularity`, `dues.proration`, `closing.*`) fails.

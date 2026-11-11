@@ -373,6 +373,29 @@ def test_match_members_ambiguous() -> None:
     assert match_members("Shared Name", aliases) == ["1001", "1002"]
 
 
+def test_match_members_searches_payer_for_name() -> None:
+    assert match_members("Dr. JOHN DOE", aliases_file({"1001": ["John Doe"]})) == [
+        "1001"
+    ]
+
+
+def test_match_members_regex_features_and_normalization() -> None:
+    aliases = aliases_file({"1001": [r"^dr\.\s+john\s+doe$"]})
+    assert match_members("  Dr.\tJOHN   Doe  ", aliases) == ["1001"]
+    assert match_members("Mr. John Doe", aliases) == []
+
+
+def test_match_members_overlapping_patterns_are_ambiguous() -> None:
+    aliases = aliases_file({"1001": ["John Doe"], "1002": [r"Dr\. John"]})
+    assert match_members("Dr. John Doe", aliases) == ["1001", "1002"]
+
+
+def test_match_members_literal_regex_punctuation_and_unicode() -> None:
+    aliases = aliases_file({"1001": [r"J\. Müller"]})
+    assert match_members("Dr. J. Mu\u0308ller", aliases) == ["1001"]
+    assert match_members("Dr. Jx Müller", aliases) == []
+
+
 # --- categorization (§3.4) ----------------------------------------------------
 
 

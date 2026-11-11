@@ -40,6 +40,7 @@ def run_validation(root: Path) -> list[ValidationError]:
     errors.extend(checks.all_member_checks(members))
     errors.extend(checks.check_alias_keys_reference_members(aliases, members))
     errors.extend(checks.check_aliases_unique_across_members(aliases))
+    errors.extend(checks.check_alias_regexes(aliases))
     errors.extend(checks.check_categorization_regexes(categorization))
     errors.extend(checks.check_bank_formats(formats))
     errors.extend(checks.check_config_domains(config))

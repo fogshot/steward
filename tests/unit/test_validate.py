@@ -221,6 +221,26 @@ def test_same_alias_under_two_members_fails(tmp_path: Path) -> None:
     assert any("also assigned" in e for e in errors)
 
 
+def test_uncompilable_alias_regex_fails(tmp_path: Path) -> None:
+    aliases = VALID_ALIASES.replace("John Doe", "[John")
+    errors = reasons(make_repo(tmp_path, **{"payer_aliases.yaml": aliases}))
+    assert any(
+        "payer_aliases.yaml" in e
+        and "1001" in e
+        and "[0]" in e
+        and "regex does not compile" in e
+        for e in errors
+    )
+
+
+def test_regex_escapes_with_different_meanings_are_not_duplicates(
+    tmp_path: Path,
+) -> None:
+    aliases = "aliases:\n  '1001': ['\\s']\n  '1002': ['\\S']\n"
+    errors = reasons(make_repo(tmp_path, **{"payer_aliases.yaml": aliases}))
+    assert not any("also assigned" in error for error in errors)
+
+
 def test_uncompilable_categorization_regex_fails(tmp_path: Path) -> None:
     categorization = VALID_CATEGORIZATION.replace('"account fee"', '"[unclosed"')
     errors = reasons(make_repo(tmp_path, **{"categorization.yaml": categorization}))

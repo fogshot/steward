@@ -55,6 +55,7 @@ steward import <bank-export> --format <mapping> [--dry-run]
 - Re-importing after adding a categorization rule: uncommitted `uncategorized` entries matching the rule are rewritten to the rule's account with the `review:` tag removed, reported as resolved, and `hledger check` still passes; committed entries are untouched.
 - Re-importing after adding a payer alias: an uncommitted `unmatched` entry gains the `member-id` tag and the receivable-clearing posting account.
 - A row whose payer alias matches and whose amount equals the member's receivable gets a `member-id` tag and a receivable-clearing posting, no `review:` tag.
+- Alias regexes search the normalized payer name case-insensitively: a name pattern matches the same name with a title; patterns matching different members produce `review: ambiguous`.
 - With €240 outstanding for two €120 years, a €120 payment is not flagged `partial`, while a €60 payment is; €120 remains outstanding after the full-year payment.
 - If booking-year dues are zero, a payment below the outstanding balance is still flagged `partial`; overpayments remain compared with the total outstanding balance.
 - An unknown payer lands in a suspense account with `review: uncategorized` or `review: unmatched` and appears in the report.

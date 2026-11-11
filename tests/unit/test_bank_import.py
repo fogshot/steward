@@ -150,6 +150,30 @@ def test_matched_payment_clears_receivable(tmp_path: Path) -> None:
     assert query_receivable_balance(root / "journals", "1001") == 0
 
 
+def test_import_matches_payee_with_title(tmp_path: Path) -> None:
+    root = make_repo(tmp_path)
+    accrue_2026(root)
+    export = write_export(root, ["2026-02-03;120.00;Dr. John Doe;dues;DE001"])
+    report = import_bank_export(root, export, "test-bank")
+    assert report.flagged == []
+    assert "member-id: 1001" in journal_text(root)
+    assert query_receivable_balance(root / "journals", "1001") == 0
+
+
+def test_import_overlapping_alias_patterns_flag_ambiguous(tmp_path: Path) -> None:
+    root = make_repo(tmp_path)
+    members = (root / "members.yaml").read_text()
+    members += MEMBERS[MEMBERS.index('  - id: "1001"') :].replace("1001", "1002")
+    (root / "members.yaml").write_text(members)
+    (root / "payer_aliases.yaml").write_text(
+        'aliases:\n  "1001": ["John Doe"]\n  "1002": ["Dr. John"]\n'
+    )
+    export = write_export(root, ["2026-02-03;120.00;Dr. John Doe;dues;DE001"])
+    report = import_bank_export(root, export, "test-bank")
+    assert [reason for _, _, reason in report.flagged] == ["ambiguous"]
+    assert "member-id:" not in journal_text(root)
+
+
 def test_unknown_payer_flagged_and_reported(tmp_path: Path) -> None:
     root = make_repo(tmp_path)
     export = write_export(root, ["2026-02-03;50.00;Unknown Person;donation?;DE001"])
@@ -478,6 +502,19 @@ def test_reimport_with_new_alias_resolves_to_member_clearing(tmp_path: Path) -> 
     assert "member-id: 1001" in text
     assert "assets:receivables:dues" in text
     assert "review:" not in text
+    assert query_receivable_balance(root / "journals", "1001") == 0
+
+
+def test_reimport_new_regex_alias_matches_payer_with_title(tmp_path: Path) -> None:
+    root = make_repo(tmp_path)
+    accrue_2026(root)
+    export = write_export(root, ["2026-02-03;120.00;Dr. J. Doe;dues;DE001"])
+    assert import_bank_export(root, export, "test-bank").flagged
+    aliases = (root / "payer_aliases.yaml").read_text()
+    (root / "payer_aliases.yaml").write_text(aliases + "    - 'J\\. Doe'\n")
+    report = import_bank_export(root, export, "test-bank")
+    assert report.resolved == 1
+    assert report.flagged == []
     assert query_receivable_balance(root / "journals", "1001") == 0
 
 

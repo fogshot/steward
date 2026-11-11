@@ -18,6 +18,8 @@ The treasury is a **private Git repository** of plain-text files:
 
 Steward computes *what* to book; [hledger](https://hledger.org) owns the journals and does the accounting. Journal entries become immutable once committed — until then they are working state: you may add manual entries (`hledger add` or a text editor — e.g. cash transactions), and uncommitted entries may still change when review flags resolve (see below).
 
+Payer aliases are case-insensitive regular expressions searched within the normalized payer name. Use `^John Doe$` for an exact match and `'J\. Doe'` for a literal period. Review existing aliases containing punctuation before importing: regex metacharacters have special meaning, and broad patterns may match the wrong payer. If patterns for multiple members match, Steward flags the payment as ambiguous.
+
 ## Tools
 
 Install once: **Git**, **hledger**, and **Steward** — see the Installation section of the Steward repository's README. All commands run from the root of the treasury repository.

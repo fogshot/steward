@@ -141,14 +141,15 @@ Rules:
 aliases:
   "1001":                     # member id from members.yaml
     - "John Doe"
-    - "J. Doe"
+    - 'J\. Doe'
     - "Doe, John"
     - "Jane Doe"              # third-party payer (spouse) paying for 1001
 ```
 
 - Keys must reference existing member IDs. Member names are **not** duplicated here — `members.yaml` is the single source of truth for names.
 - Aliases map **payers**, not just members: a third party paying on a member's behalf (e.g. a parent or spouse) is added to that member's alias list.
-- Matching is case-insensitive, ignores extra whitespace, and compares against the payee/sender field of a bank transaction.
+- Each alias is a Python regular expression searched case-insensitively against the payee/sender field, after the payer is Unicode NFC-normalized and whitespace is collapsed. Use anchors such as `^` and `$` to require a full match and escape regex metacharacters for literal punctuation (for example `J\. Doe`); YAML single quotes preserve backslashes.
+- This changes existing aliases from literal names to regex patterns: review and escape any metacharacters in existing files before importing. Multiple patterns can match the same payer; matches across different members are flagged `ambiguous`, not resolved by rule order. Identical alias strings assigned to different members are invalid; validation cannot detect every possible pattern overlap.
 
 **Match confidence** (decisions #4 and #15 in the HLD) — matching is automatic, with low-confidence results flagged for review instead of confirmed interactively:
 
