@@ -84,7 +84,7 @@ The learning loop: updating aliases or rules, then re-running `steward import` w
 steward commit
 ```
 
-Validates everything, refuses while unresolved `review:` tags exist (`--force` overrides), and commits the repository. Commit whenever new entries exist — daily, weekly, at least monthly. Frequent small commits *are* the audit trail: fiscal regulations (GoBD-style) demand timely, tamper-evident recording, and Git provides it.
+Validates everything, refuses while unresolved `review:` tags exist (`--force` overrides), stages all non-ignored changes, and commits the repository. Use `steward commit --dry-run` to preview without staging or committing. If a configured push fails, the local commit still exists; fix the remote and push it separately. Commit whenever new entries exist — daily, weekly, at least monthly. Frequent small commits *are* the audit trail: fiscal regulations (GoBD-style) demand timely, tamper-evident recording, and Git provides it.
 
 For stricter tamper-resistance, `steward.yaml` offers `closing.sign: true` (GPG-signed commits — proves *who* recorded) and `closing.remote` (push after commit — server-side timestamps outside your control). Setup for both is below.
 
@@ -121,7 +121,7 @@ A late bank statement is **not** a correction: just import it. Its rows are appe
 steward close --year 2026
 ```
 
-Runs the annual accounting close: income and expense accounts are zeroed into equity in the last period file, and opening balances carry into the new year. Once per fiscal year — never monthly.
+Runs the annual accounting close: income and expense accounts are zeroed into equity in the last period file, and opening balances carry into the new year. Once per fiscal year — never monthly. Use `steward close --year 2026 --dry-run` to preflight without changing journals. The command refuses to close a year twice; if a write fails, inspect the journals before retrying. Close does not commit: run `steward commit` afterward.
 
 ## Handover
 

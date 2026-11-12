@@ -508,6 +508,18 @@ def load_config(path: Path) -> tuple[Config, list[ValidationError]]:
                 )
         if isinstance(closing.get("sign"), bool):
             config.closing_sign = closing["sign"]
+        elif "sign" in closing:
+            errors.append(ValidationError(file, "closing.sign", "expected a boolean"))
         if isinstance(closing.get("remote"), str):
             config.closing_remote = closing["remote"]
+            if not config.closing_remote.strip():
+                errors.append(
+                    ValidationError(file, "closing.remote", "must not be empty")
+                )
+        elif closing.get("remote") is not None:
+            errors.append(
+                ValidationError(file, "closing.remote", "expected a string or null")
+            )
+    else:
+        errors.append(ValidationError(file, "closing", "expected a mapping"))
     return config, errors

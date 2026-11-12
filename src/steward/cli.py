@@ -92,16 +92,42 @@ def validate(root: Path) -> None:
 
 @main.command()
 @click.option("--force", is_flag=True, help="Commit despite unresolved review tags.")
-def commit(force: bool) -> None:
+@click.option(
+    "--root",
+    type=click.Path(exists=True, file_okay=False, path_type=Path),
+    default=".",
+    help="Data repository root.",
+)
+@click.option("--dry-run", is_flag=True, help="Show changes without committing.")
+def commit(force: bool, root: Path, dry_run: bool) -> None:
     """Validate, check review tags, and git-commit (PRD: commit-and-close.md)."""
-    raise click.ClickException("not implemented")
+    from .commit_impl import commit_repository
+
+    try:
+        report = commit_repository(root, force=force, dry_run=dry_run)
+    except RuntimeError as exc:
+        raise click.ClickException(str(exc)) from exc
+    click.echo(report)
 
 
 @main.command()
 @click.option("--year", type=int, required=True, help="Fiscal year to close.")
-def close(year: int) -> None:
+@click.option(
+    "--root",
+    type=click.Path(exists=True, file_okay=False, path_type=Path),
+    default=".",
+    help="Data repository root.",
+)
+@click.option("--dry-run", is_flag=True, help="Preview without writing journals.")
+def close(year: int, root: Path, dry_run: bool) -> None:
     """Run the annual accounting close via hledger (PRD: commit-and-close.md)."""
-    raise click.ClickException("not implemented")
+    from .close_impl import close_year
+
+    try:
+        report = close_year(root, year, dry_run=dry_run)
+    except RuntimeError as exc:
+        raise click.ClickException(str(exc)) from exc
+    click.echo(report)
 
 
 @main.command(name="init")

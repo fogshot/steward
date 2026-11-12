@@ -394,7 +394,7 @@ Commits should happen **flexibly — daily, weekly, at least monthly** — whene
 
 ### 10.2 `steward close` — the annual accounting close
 
-`hledger close` runs **once per fiscal year**, not monthly: closing transactions zero income/expense accounts into equity in the last period file, and opening balances carry assets/liabilities into the first file of the new year.
+`hledger close` runs **once per fiscal year**, not monthly: closing transactions zero income/expense accounts into equity in the last period file, and opening balances carry assets/liabilities into the first file of the new year. Steward imports the calculated transfers through the normal write path; the [commit-and-close PRD](../requirements/features/commit-and-close.md) specifies member attribution, preflight, and re-run safety.
 
 ### 10.3 Configurable tamper-resistance
 
