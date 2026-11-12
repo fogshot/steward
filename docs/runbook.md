@@ -65,7 +65,7 @@ steward import export.csv --format <your-bank>
 Steward never asks interactively; uncertain rows are imported with a `; review: <reason>` tag. List everything awaiting attention:
 
 ```
-hledger print tag:review
+hledger -f journals/main.journal print tag:review
 ```
 
 | Reason | Meaning | Resolution |
@@ -137,15 +137,48 @@ Hand over alongside the repository: online-banking access and any open `review:`
 
 ## Everyday queries
 
-Steward delegates reporting to hledger. Useful commands:
+Steward delegates reporting to hledger. Run these commands from the treasury
+repository root. They use the default journal path; if you changed `journals`
+in `steward.yaml`, substitute that directory for `journals`.
 
 ```
-hledger bal assets:receivables:dues        # total outstanding dues
-hledger print tag:member-id=1001           # everything booked for one member
-hledger print tag:review                   # everything awaiting resolution
-hledger reg assets:bank:checking           # bank account movements
-steward validate                           # full consistency check (also suitable for CI)
+hledger -f journals/main.journal bal --end tomorrow  # current balances of all accounts
+hledger -f journals/main.journal bal assets:receivables:dues --end tomorrow  # total dues balance
+hledger -f journals/main.journal print tag:member-id=1001  # one member's transactions
+hledger -f journals/main.journal print tag:review  # everything awaiting resolution
+hledger -f journals/main.journal reg assets:bank:checking  # bank account movements
+steward validate  # full consistency check (also suitable for CI)
 ```
+
+`--end tomorrow` includes today's postings but excludes future-dated entries.
+Without an end date, hledger includes future-dated entries as well.
+
+### Outstanding dues by member
+
+Group the receivables account by `member-id` to see each member's current
+balance, including accruals, adjustments, and payments:
+
+```
+hledger -f journals/main.journal bal assets:receivables:dues --pivot member-id --end tomorrow
+```
+
+Look up the IDs in `members.yaml`. Positive balances are outstanding dues;
+negative balances are credits or overpayments. Zero balances are omitted by
+default. Untagged receivable postings cannot be attributed to a member by
+this report and should be investigated.
+
+For the balances at the end of 2026, use the next day as the exclusive end
+date. For a month-by-month view of 2026, include historical balances so that
+dues carried over from before the period are not omitted:
+
+```
+hledger -f journals/main.journal bal assets:receivables:dues --pivot member-id --end 2027-01-01
+hledger -f journals/main.journal bal assets:receivables:dues --pivot member-id --monthly --historical --begin 2026-01-01 --end 2027-01-01
+```
+
+These are balances **as of** those dates, not a report of unpaid dues for a
+specific dues year. Payments clear the member's total balance and are not
+assigned to a year; filtering on the accrual's `year` tag would omit payments.
 
 ## Privacy
 
