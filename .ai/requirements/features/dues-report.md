@@ -1,6 +1,6 @@
 # PRD: Membership Dues Balance Report
 
-> **Status:** Draft for review; not implemented.
+> **Status:** Phase 2, implemented.
 > Canonical schemas and posting models: [../../docs/architecture.md](../../docs/architecture.md) §3.2 and §5.
 
 ## 1. Purpose

@@ -1,6 +1,6 @@
 [project]
 name = "steward"
-version = "0.1.0"
+version = "0.2.0"
 description = "Association financial management through plain-text accounting, idempotent workflows, and effortless handovers"
 readme = "README.md"
 requires-python = ">=3.11"

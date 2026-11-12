@@ -68,7 +68,7 @@ Steward is a file-processing CLI that **orchestrates hledger**. It reads YAML ma
 | Compute dues, deltas, adjustments | Steward | temporal master data (§3.2) |
 | Render & append transactions | **hledger** | `hledger import` + static rules file (§6) |
 | Validate journals | **hledger** | `hledger check` |
-| Reports & queries | **hledger** | `bal`, `reg`, `print`, … (Phase 2 reporting wraps these) |
+| Reports & queries | **hledger** / Steward | `bal`, `reg`, `print`, …; `steward report dues` adds member names to hledger balances |
 | Manual one-off entries | **hledger** | `hledger add` — no Steward code needed |
 | Commit (tamper-evidence) | Steward | `steward commit` wraps validate → review-check → `git commit` (§10) |
 | Annual accounting close | **hledger** | `steward close` runs `hledger close` (§10) |

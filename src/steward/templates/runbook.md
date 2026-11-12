@@ -179,8 +179,19 @@ Without an end date, hledger includes future-dated entries as well.
 
 ### Outstanding dues by member
 
-Group the receivables account by `member-id` to see each member's current
-balance, including accruals, adjustments, and payments:
+Use Steward to show balances with member names and IDs:
+
+```
+steward report dues                        # through today
+steward report dues --as-of 2026-12-31    # through this date, inclusive
+```
+
+The report uses the names currently in `members.yaml`, including for historical
+dates. Positive balances are outstanding dues; negative balances are credits
+or overpayments. Unknown IDs and untagged postings are shown with a warning.
+Zero balances are omitted. The total is net of credits and unattributed amounts.
+
+Alternatively, group the receivables account directly in hledger:
 
 ```
 hledger -f journals/main.journal bal assets:receivables:dues --pivot member-id --end tomorrow

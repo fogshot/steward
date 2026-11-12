@@ -3,6 +3,7 @@
 Command specifications live in .ai/requirements/features/ (one PRD per command).
 """
 
+import re
 from datetime import date, datetime
 from pathlib import Path
 
@@ -88,6 +89,45 @@ def validate(root: Path) -> None:
     if errors:
         raise click.ClickException(f"validation failed with {len(errors)} error(s)")
     click.echo("validation passed")
+
+
+@main.group()
+def report() -> None:
+    """Display treasury reports."""
+
+
+@report.command(name="dues")
+@click.option(
+    "--as-of",
+    type=str,
+    default=None,
+    help="Include postings through this date (default: today).",
+)
+@click.option(
+    "--root",
+    type=click.Path(exists=True, file_okay=False, path_type=Path),
+    default=".",
+    help="Data repository root.",
+)
+def report_dues(as_of: str | None, root: Path) -> None:
+    """Report member dues balances with names."""
+    from .dues_report import report_dues as run
+
+    parsed_date = None
+    if as_of is not None:
+        if not re.fullmatch(r"\d{4}-\d{2}-\d{2}", as_of):
+            raise click.BadParameter("expected YYYY-MM-DD", param_hint="--as-of")
+        try:
+            parsed_date = date.fromisoformat(as_of)
+        except ValueError as exc:
+            raise click.BadParameter(
+                "invalid calendar date", param_hint="--as-of"
+            ) from exc
+    try:
+        result = run(root, as_of=parsed_date)
+    except RuntimeError as exc:
+        raise click.ClickException(str(exc)) from exc
+    click.echo(result.render())
 
 
 @main.command()

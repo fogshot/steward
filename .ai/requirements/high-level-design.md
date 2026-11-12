@@ -86,7 +86,7 @@ The commands below are implemented; their PRDs identify any known specification 
 
 | Feature | Command(s) | PRD |
 |---------|-----------|-----|
-| Membership dues balance report | `steward report dues` (proposed) | [features/dues-report.md](features/dues-report.md) — draft for review |
+| Membership dues balance report | `steward report dues` | [features/dues-report.md](features/dues-report.md) — implemented |
 
 Other Phase 2 plans are listed in the [roadmap](#6-future-expansion-roadmap).
 

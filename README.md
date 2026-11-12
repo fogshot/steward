@@ -48,6 +48,7 @@ For a permanent install, `uv tool install .` (or `pipx install .`) puts `steward
 | `steward import <export.csv> --format <mapping>` | Import a bank statement: dedup, match payers to members, categorize |
 | `steward commit` | Validate, check review flags, and git-commit the treasury |
 | `steward close --year 2026` | Run the annual accounting close via hledger |
+| `steward report dues [--as-of YYYY-MM-DD]` | Show member dues balances with names |
 
 `generate-dues`, `import`, `commit`, and `close` support `--dry-run`; `init` does not. The operational routine — when to run what, and how to resolve review flags — is in [docs/runbook.md](docs/runbook.md).
 
