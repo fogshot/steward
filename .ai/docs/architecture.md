@@ -5,9 +5,37 @@
 > - Feature specifications (PRDs): [../requirements/features/](../requirements/features/)
 > - Technology choices and rationale: [tech-stack.md](tech-stack.md)
 
+## Contents
+
+- [1. System Overview](#1-system-overview)
+- [2. Directory Layout](#2-directory-layout)
+- [3. Data Formats & Schemas](#3-data-formats--schemas)
+  - [3.1 Configuration](#31-stewardyaml--configuration)
+  - [3.2 Member master data](#32-membersyaml--master-data)
+  - [3.3 Payer matching](#33-payer_aliasesyaml--bank-payer-matching)
+  - [3.4 Categorization](#34-categorizationyaml--non-member-transaction-rules)
+  - [3.5 Bank format mappings](#35-bank-format-mappings-bank_formatsyaml)
+  - [3.6 Journal conventions](#36-journal-conventions)
+- [4. Chart of Accounts](#4-chart-of-accounts-minimal)
+- [5. Posting Models](#5-posting-models)
+  - [5.1 Dues accrual](#51-dues-accrual-generated-by-generate-dues)
+  - [5.2 Bank payment](#52-bank-payment-clearing-a-receivable-generated-by-import)
+  - [5.3 Adjustment](#53-adjustment-master-data-changed-after-the-accrual-was-booked)
+- [6. Write Path](#6-write-path-hledger-import)
+- [7. Idempotency Mechanisms](#7-idempotency-mechanisms)
+  - [7.1 Dues generation](#71-dues-generation--pre-flight-scan)
+  - [7.2 Bank import](#72-bank-import--content-hashing)
+- [8. Privacy & Data Protection](#8-privacy--data-protection)
+- [9. Error Handling & Safety](#9-error-handling--safety)
+- [10. Committing, Closing & Tamper-Evidence](#10-committing-closing--tamper-evidence)
+  - [10.1 Commit](#101-steward-commit--the-recording-ritual)
+  - [10.2 Close](#102-steward-close--the-annual-accounting-close)
+  - [10.3 Configurable tamper-resistance](#103-configurable-tamper-resistance)
+  - [10.4 Corrections to closed periods](#104-corrections-to-closed-periods)
+
 ## 1. System Overview
 
-Steward is a file-processing CLI that **orchestrates hledger**. It reads YAML master data and bank exports, computes *what* must be booked, and delegates *all journal writes, validation, and reporting* to the `hledger` binary.
+Steward is a file-processing CLI that **orchestrates hledger**. It reads YAML master data and bank exports, computes *what* must be booked, and delegates transaction rendering, journal validation, and reporting to the `hledger` binary. The scoped review-resolution exception is described in §6.
 
 ```
             ┌───────────────────────────────────────────┐
@@ -25,10 +53,10 @@ Steward is a file-processing CLI that **orchestrates hledger**. It reads YAML ma
         │  rules/steward.rules │
         │  journals/*/*.journal│◄─────────┘
         └──────────────────────┘
-     journals/ is written exclusively by hledger
+     generated transactions are appended by hledger
 ```
 
-**Core principle: Steward decides *what* to book; hledger owns *how* it is written.** Steward never opens a journal file for writing. Every generated transaction — dues accruals, adjustments, imported bank rows — enters the journal through `hledger import` (§6).
+**Core principle: Steward decides *what* to book; hledger owns transaction rendering.** Generated transactions enter the journal through `hledger import`; eligible uncommitted review entries may be rewritten as specified in §6.
 
 ### Responsibility matrix
 
@@ -45,7 +73,7 @@ Steward is a file-processing CLI that **orchestrates hledger**. It reads YAML ma
 | Commit (tamper-evidence) | Steward | `steward commit` wraps validate → review-check → `git commit` (§10) |
 | Annual accounting close | **hledger** | `steward close` runs `hledger close` (§10) |
 
-Rationale: hledger is the single owner of journal syntax and formatting, so Steward can never emit an invalid or misformatted journal. Anything hledger's CLI already does well is not reimplemented in Python.
+Rationale: hledger owns transaction rendering and validation; the narrowly scoped review rewrite is guarded by shape checks and `hledger check` (§6). Anything hledger's CLI already does well is not reimplemented in Python.
 
 ## 2. Directory Layout
 
@@ -83,8 +111,8 @@ journal_granularity: "monthly"  # monthly (default) | yearly
 dues:
   proration: "monthly"        # monthly (default) | daily | none
 closing:
-  sign: false                 # GPG-sign closing commits/tags
-  remote: null                # e.g. "origin" — push after each closing commit
+  sign: false                 # GPG-sign commits made by steward commit
+  remote: null                # e.g. "origin" — push after each steward commit
 ```
 
 ### 3.2 `members.yaml` — master data
@@ -232,7 +260,7 @@ Variations the mapping must be able to express:
 - **Date and number formats** per mapping (`date_format`, `decimal_mark`, optional `thousands_separator`).
 - **Reference extraction**: `reference_pattern` (regex) mines a stable end-to-end reference from a text column — e.g. `End-to-End-Ref\.?:\s*(\S+)` against a booking-text column. When present, the reference takes precedence over the description in the dedup fingerprint (§7.2).
 
-A mapping that cannot be expressed declaratively (e.g. amounts embedded in prose text) is a new parser adapter, not a hack in the mapping layer. `steward validate` checks mappings against a sample export.
+A mapping that cannot be expressed declaratively (e.g. amounts embedded in prose text) is a new parser adapter, not a hack in the mapping layer. Validation checks mapping structure; the sample-export validation gap is recorded in the [validation PRD](../requirements/features/validation.md).
 
 **Row order** (decision #9 in the HLD): parser adapters must not assume any row order — exports may be newest-first. Steward sorts rows by date before rendering. This is presentation normalization, not correctness: hledger reports and the content-hash dedup (§7.2) are order-insensitive, but chronological journal files serve human inspection.
 
@@ -241,9 +269,9 @@ A mapping that cannot be expressed declaratively (e.g. amounts embedded in prose
 - **The fiscal year is the calendar year.** There is no `fiscal_year_start` configuration; a configurable fiscal year is a possible future feature (HLD §6) with wide-ranging implications (journal layout, accrual dates, closing file placement) that must be designed then.
 - **One file per month** (default): `journals/YYYY/MM.journal`. With `journal_granularity: "yearly"`, one file per year: `journals/YYYY.journal`.
 - `journals/main.journal` is static and never needs editing: it contains only `include **.journal` (hledger globs match all journal files in the directory and below, and always exclude the including file).
-- Monthly granularity supports fiscal regulations that require timely, tamper-evident recording (e.g. GoBD): each month is closed and committed to Git, keeping every commit small and reviewable. Because `import` appends each transaction to the file of its posting month, previously committed month files stay untouched; a late backdated append shows up as an isolated Git diff.
+- Monthly granularity supports timely, tamper-evident Git commits (e.g. GoBD). Import appends transactions to their posting-month files; a late backdated append appears as a Git diff without changing existing entries.
 - **Once-committed entries are never changed** — corrections are later adjustment entries (§5.3), so a closed period's history in Git stays intact.
-- Journal files are **written exclusively by `hledger import`** (§6). Humans may add manual entries (`hledger add` or an editor); Steward never modifies journal files itself.
+- Generated transactions are appended by `hledger import`; eligible uncommitted review entries may be rewritten as described in §6. Humans may also add manual entries.
 - Currency commodity: `€` (EUR), declared once per file.
 - Generated transactions carry metadata tags:
   - `; member-id: 1001` — links a transaction to a member.
@@ -298,13 +326,13 @@ Low-confidence matches carry an additional `; review: <reason>` tag (§3.3); unm
 
 ### 5.3 Adjustment (master data changed after the accrual was booked)
 
-Adjustments carry the same `member-id`/`year` tags and book only the difference (positive or negative) between the corrected and the previously booked amount. Like all bookings, they are dated with the command's run date — never backdated into a closed period.
+Adjustments carry the same `member-id`/`year` tags and book only the difference (positive or negative) between the corrected and the previously booked amount. By default they are dated with the command's run date; `--date` can override it, so the treasurer must avoid backdating corrections into a closed period.
 
 ## 6. Write Path: `hledger import`
 
-All journal writes flow through a single pipeline:
+Generated transactions flow through this pipeline; review-resolution rewrites are the exception described below:
 
-1. **Compute.** Steward produces a set of bookings (dues accruals, adjustments, or matched bank transactions).
+1. **Compute.** Steward produces bookings (dues accruals, adjustments, bank transactions, or annual-close transfers).
 2. **Enrich.** Each booking becomes one row of an internal *enriched CSV*, written to a temp file:
 
    `date, description, account1, account2, amount, comment`
@@ -332,7 +360,7 @@ All journal writes flow through a single pipeline:
 Consequences:
 
 - **One writer.** Journal syntax, amount alignment, and tag formatting are owned by hledger; Steward cannot emit a malformed journal. The single exception is review resolution (decision #14): `steward import` rewrites the account and tags of an eligible uncommitted review entry in place when its classification changes. The rewrite is text surgery restricted to Steward-generated two-posting blocks whose shape and amounts match the bank row exactly — anything unexpected is left untouched for manual resolution — and the `hledger check` gate (step 4) runs afterwards.
-- **`--dry-run` for free.** Steward's `--dry-run` maps to `hledger import --dry-run`, which prints the transactions that would be appended and writes nothing.
+- **Dry-run limitation.** `generate-dues` and `import` use `hledger import --dry-run`, but their current setup can create empty period files, directories, or rules files. The dues-generation and bank-import PRDs retain the no-write requirement and record the implementation gap.
 - **hledger's built-in overlap detection is deliberately bypassed.** `import` tracks a `.latest.<file>` state file per *stable* input filename (latest imported date, plus the count of same-date records). Steward feeds it a fresh temp file of already-deduplicated rows, so no `.latest` state ever applies; deduplication is Steward's content-hash pre-filter (§7.2), which is robust against overlapping re-exports.
 - **Limitations.** One CSV row yields one two-posting transaction — sufficient for all posting models in §5. Rare multi-split transactions (e.g. one bank payout covering both dues and a donation) are entered manually with `hledger add`. Steward ensures the target period's journal file (and its year directory) exists, creating it empty if needed, before invoking `import`.
 
@@ -369,18 +397,18 @@ Known limitation: rows without a stable reference remain vulnerable to descripti
 Master data and bank journals contain personal data (GDPR relevance):
 
 - **Real data lives in a separate, private Git repository per association** (decision #5 in the HLD), laid out as in §2. The public Steward repository carries only `*.example.yaml` files — never real member data, journals, or bank exports. `bank_formats.yaml` and `categorization.yaml` contain no personal data and may be shared between associations.
-- The data repo's `.gitignore` covers OS artifacts (e.g. `.DS_Store`) and `*.csv` bank exports. `steward init` scaffolds the data repo, including its `.gitignore` — see [init.md](../../requirements/features/init.md).
+- The data repo's `.gitignore` covers OS artifacts (e.g. `.DS_Store`) and `*.csv` bank exports. `steward init` scaffolds the data repo, including its `.gitignore` — see [init.md](../requirements/features/init.md).
 - The enriched CSV (§6) contains personal data but exists only as a temp file for the duration of a command run.
 
 ## 9. Error Handling & Safety
 
-- All mutating commands support `--dry-run`, mapped to `hledger import --dry-run` (prints planned transactions, writes nothing).
-- `steward validate` runs the schema checks from §3 plus `hledger -f journals/main.journal check`; it is suitable for CI on every commit. Full check list: [validation.md](../../requirements/features/validation.md).
+- Preview support and its current limitations are described in the individual command PRDs. `init` does not have a dry-run option.
+- `steward validate` runs the schema checks from §3 plus `hledger -f journals/main.journal check`; it is suitable for CI on every commit. Full check list: [validation.md](../requirements/features/validation.md).
 - Every real import is followed by the `hledger check` gate (§6 step 4).
 
 ## 10. Committing, Closing & Tamper-Evidence
 
-Regulatory compliance (GoBD-style: tamper-evidence, timeliness, traceability) comes from **Git, not from hledger**. `hledger close` is pure accounting hygiene — it appends closing/opening transactions to an editable text file and contributes nothing to tamper-evidence. The commit is the compliance mechanism.
+Regulatory compliance (GoBD-style: tamper-evidence, timeliness, traceability) comes from **Git, not from hledger**. `hledger close` calculates closing/opening transactions; Steward imports them into editable journal files. The commit is the tamper-evidence mechanism.
 
 ### 10.1 `steward commit` — the recording ritual
 
@@ -401,11 +429,11 @@ Commits should happen **flexibly — daily, weekly, at least monthly** — whene
 | Level | Mechanism | Property |
 |-------|-----------|----------|
 | Default | Plain commits | No silent edits: history rewrites break the hash chain |
-| Optional | `closing.sign: true` — GPG-signed commits/tags | Proves *who* recorded the period; tags are unforgeable |
+| Optional | `closing.sign: true` — GPG-signed commits | Proves *who* recorded the commit |
 | Optional | `closing.remote: "origin"` — push after commit | Server-side timestamps outside the treasurer's control |
 
 Git commit timestamps alone are forgeable (`GIT_COMMITTER_DATE`), so associations with stricter requirements should enable signing and/or a remote.
 
 ### 10.4 Corrections to closed periods
 
-A late bank statement or an auditor's finding in an already-committed period is **never** fixed by editing that period's file — the correction is booked as an adjustment entry in the current period (§5.3). The runbook must state this explicitly.
+An error in an already-committed entry is **never** fixed by editing that entry — the correction is booked as an adjustment entry in the current period (§5.3). A new late bank transaction is distinct from a correction; see the [runbook](../../docs/runbook.md) for its treatment.

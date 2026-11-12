@@ -4,11 +4,22 @@ A command-line application to streamline association financial management throug
 
 Steward serves volunteer treasurers of small member associations. It tracks membership dues over time, imports bank statements and matches payments to members, and keeps auditable financial records — all in plain text files ([hledger](https://hledger.org) journals and YAML), version-controlled with Git.
 
-> **Status:** Phase 1 mostly implemented — `validate`, `generate-dues`, `import`, and `init` are working; `commit` and `close` are still stubs. The canonical design documents live in [.ai/](.ai/):
+> **Status:** Phase 1 commands are implemented. Known gaps against their specifications are noted in the relevant PRDs. The canonical design documents live in [.ai/](.ai/):
 > - [High-level design](.ai/requirements/high-level-design.md) — vision, principles, roadmap, decision log
 > - [Feature PRDs](.ai/requirements/features/) — per-command specifications
 > - [Architecture](.ai/docs/architecture.md) — data schemas, journal conventions, write path
 > - [Tech stack](.ai/docs/tech-stack.md) — technology choices and rationale
+
+## Contents
+
+- [Documentation map](#documentation-map)
+- [Installation](#installation)
+- [Commands](#commands)
+- [User Manual: master data](#user-manual-master-data)
+  - [Configuration reference](#configuration-reference-stewardyaml)
+  - [Managing members](#managing-members)
+  - [Fee structure change](#fee-structure-change)
+  - [Individual exceptions & adjustments](#individual-exceptions--adjustments)
 
 ## Documentation map
 
@@ -17,7 +28,7 @@ Steward serves volunteer treasurers of small member associations. It tracks memb
 
 ## Installation
 
-Requirements: **Python ≥ 3.11**, **hledger 1.52.4** (the supported, CI-tested version), and **Git**.
+Requirements: **Python ≥ 3.11**, **hledger 1.52.4** (the supported, CI-tested version), **Git**, and **uv** for the installation commands below.
 
 ```sh
 git clone <this-repository> && cd steward
@@ -35,10 +46,10 @@ For a permanent install, `uv tool install .` (or `pipx install .`) puts `steward
 | `steward validate` | Check all YAML files and journals for consistency |
 | `steward generate-dues --year 2026` | Book annual membership-dues accruals (idempotent) |
 | `steward import <export.csv> --format <mapping>` | Import a bank statement: dedup, match payers to members, categorize |
-| `steward commit` | Validate, check review flags, and git-commit the treasury *(not yet implemented)* |
-| `steward close --year 2026` | Run the annual accounting close via hledger *(not yet implemented)* |
+| `steward commit` | Validate, check review flags, and git-commit the treasury |
+| `steward close --year 2026` | Run the annual accounting close via hledger |
 
-All mutating commands support `--dry-run`. The operational routine — when to run what, and how to resolve review flags — is in [docs/runbook.md](docs/runbook.md).
+`generate-dues`, `import`, `commit`, and `close` support `--dry-run`; `init` does not. The operational routine — when to run what, and how to resolve review flags — is in [docs/runbook.md](docs/runbook.md).
 
 ## User Manual: master data
 
@@ -64,6 +75,9 @@ The `closing.*` keys control tamper-resistance for `steward commit` (see the run
 - `remote: "origin"` — after each commit, Steward pushes to the named remote, adding server-side timestamps outside the treasurer's control. Requires the remote to be configured in Git (`git remote add`).
 
 Git commit timestamps alone are forgeable, so associations with stricter requirements should enable one or both. Both default to off and can be enabled at any time — they affect only future commits.
+
+Financial postings and annual close currently support euros. Setting another
+`currency` code during setup does not enable non-EUR accounting.
 
 ### Managing members
 

@@ -4,6 +4,23 @@ How to run the association's treasury with Steward: the recurring routine, the c
 
 **Audience:** the serving treasurer — and their successor. No hledger or Git expertise is assumed beyond the commands shown here.
 
+## Contents
+
+- [What you are looking at](#what-you-are-looking-at)
+- [Tools](#tools)
+- [Setup](#setup-once)
+- [The routine](#the-routine)
+  - [Book the dues claims](#once-a-year-book-the-dues-claims)
+  - [Import a bank statement](#per-bank-statement-import)
+  - [Resolve review flags](#resolve-review-flags)
+  - [Commit](#commit--the-recording-ritual)
+  - [Corrections](#corrections--read-this-before-touching-old-entries)
+  - [Close the books](#once-a-year-close-the-books)
+- [Handover](#handover)
+- [Everyday queries](#everyday-queries)
+  - [Outstanding dues by member](#outstanding-dues-by-member)
+- [Privacy](#privacy)
+
 ## What you are looking at
 
 The treasury is a **private Git repository** of plain-text files:
@@ -13,7 +30,7 @@ The treasury is a **private Git repository** of plain-text files:
 - `payer_aliases.yaml` — which bank payer names belong to which member (including third-party payers, e.g. a spouse).
 - `categorization.yaml` — rules that categorize non-member transactions.
 - `bank_formats.yaml` — how to read your bank's CSV export.
-- `journals/` — the financial records, one hledger journal file per month.
+- `journals/` — the financial records, one hledger journal file per month by default (or per year if configured).
 - `rules/steward.rules` — static hledger rules for the import write path; never edit.
 
 Steward computes *what* to book; [hledger](https://hledger.org) owns the journals and does the accounting. Journal entries become immutable once committed — until then they are working state: you may add manual entries (`hledger add` or a text editor — e.g. cash transactions), and uncommitted entries may still change when review flags resolve (see below).
@@ -24,10 +41,13 @@ Payer aliases are case-insensitive regular expressions searched within the norma
 
 Install once: **Git**, **hledger**, and **Steward** — see the Installation section of the Steward repository's README. All commands run from the root of the treasury repository.
 
+Financial postings currently use euros; selecting another currency code during setup does not enable non-EUR accounting.
+
 ## Setup (once)
 
 ```
 steward init my-treasury
+cd my-treasury
 ```
 
 scaffolds a complete, valid repository and runs a first validation. Then:
@@ -47,7 +67,7 @@ steward generate-dues --year 2026 --dry-run   # preview
 steward generate-dues --year 2026
 ```
 
-Books one dues claim per active member. Safe to re-run: unchanged members are skipped, and if master data changed after the run (a fee increase, a waiver), the next run books an **adjustment** for the difference — never a duplicate, never an edit.
+Books one dues claim per active member. Safe to re-run: unchanged members are skipped, and if master data changed after the run (a fee increase, a waiver), the next run books an **adjustment** for the difference — never a duplicate, never an edit. `--date` changes the booking date; don't use it to backdate a correction into a closed period.
 
 ### Per bank statement: import
 
@@ -56,9 +76,11 @@ steward import export.csv --format <your-bank> --dry-run   # preview
 steward import export.csv --format <your-bank>
 ```
 
-- Re-importing the same or an overlapping export is safe: known rows are dropped as duplicates and listed in the report.
-- Every row lands in the journal of its booking month.
-- The report lists imported rows, dropped duplicates, and every row flagged for review, with its reason.
+- Re-importing the same or an overlapping export is safe: known rows are counted as duplicates unless an eligible uncommitted review entry is re-classified.
+- New rows land in the journal of their booking month by default, or booking year if configured.
+- The report gives counts and lists flagged rows with their reasons up to 20; above that it summarizes them by reason.
+
+The current `--dry-run` does not append transactions, but may create empty period files or directories, or a missing rules file. The dues-generation dry run has the same limitation and reports a summary rather than the rendered transactions.
 
 ### Resolve review flags
 
@@ -84,13 +106,13 @@ The learning loop: updating aliases or rules, then re-running `steward import` w
 steward commit
 ```
 
-Validates everything, refuses while unresolved `review:` tags exist (`--force` overrides), stages all non-ignored changes, and commits the repository. Use `steward commit --dry-run` to preview without staging or committing. If a configured push fails, the local commit still exists; fix the remote and push it separately. Commit whenever new entries exist — daily, weekly, at least monthly. Frequent small commits *are* the audit trail: fiscal regulations (GoBD-style) demand timely, tamper-evident recording, and Git provides it.
+Validates everything, refuses while unresolved `review:` tags exist (`--force` overrides), stages all non-ignored changes, and commits the repository. Inspect the changes before committing: the scaffold ignores `*.csv`, but other sensitive exports or files may not be ignored. Use `steward commit --dry-run` to preview without staging or committing. If a configured push fails, the local commit still exists; fix the remote and push it separately. Commit whenever new entries exist — daily, weekly, at least monthly. Frequent small commits *are* the audit trail: fiscal regulations (GoBD-style) demand timely, tamper-evident recording, and Git provides it.
 
 For stricter tamper-resistance, `steward.yaml` offers `closing.sign: true` (GPG-signed commits — proves *who* recorded) and `closing.remote` (push after commit — server-side timestamps outside your control). Setup for both is below.
 
 #### Optional: GPG-signed commits
 
-Signed commits prove *who* recorded each period and make tags unforgeable. One-time setup:
+Signed commits help prove *who* recorded each commit. One-time setup:
 
 1. **Create a key** if you don't have one: `gpg --full-generate-key` (RSA, at least 3072 bits; use your own name and email). List your keys with `gpg --list-secret-keys --keyid-format=long` and note the key ID (the part after `rsa3072/`).
 2. **Tell Git to use it**: `git config --global user.signingkey <key-id>`.
@@ -102,18 +124,18 @@ Signed commits prove *who* recorded each period and make tags unforgeable. One-t
 Pushing after each commit adds server-side timestamps outside your control — and doubles as the off-site backup. One-time setup:
 
 1. **Create a private repository** with your hosting provider (e.g. a private GitHub repository). Private, never public — the treasury contains personal data.
-2. **Connect it**: `git remote add origin <url>` from the treasury repository, then `git push -u origin main` once to establish the tracking branch.
+2. **Connect it**: `git remote add origin <url>` from the treasury repository, then `git push -u origin HEAD` once to establish the tracking branch.
 3. **Enable pushing** in `steward.yaml`: set `closing.remote: "origin"`. From now on `steward commit` pushes after every commit.
 
 Both options affect only future commits and can be enabled independently or together.
 
 ### Corrections — read this before touching old entries
 
-**Never edit or delete an entry in a committed period.** Not for a late bank statement, not for an auditor's finding, not for a typo. The commit history is the audit trail; rewriting it destroys exactly what it proves.
+**Never edit or delete a committed entry.** Not for an auditor's finding or a typo. The commit history is the audit trail; rewriting it destroys exactly what it proves.
 
-A correction is a **new entry in the current period** that books the difference (an adjustment), dated today, explaining itself in the description. Use `hledger add` or a text editor. Steward's own commands follow the same rule.
+A correction is a **new entry in the current period** that books the difference (an adjustment), dated today, explaining itself in the description. Use a text editor or `hledger -f <current-period-journal> add`. Steward's own commands follow the same rule.
 
-A late bank statement is **not** a correction: just import it. Its rows are appended to their booking month's file — appends are always allowed. If that month was already committed, the append shows up as an isolated Git diff, which is exactly what an auditor wants to see.
+A new late bank transaction is **not** a correction to an existing entry: importing it appends a row to its booking-period file, even if that file has been committed. If the fiscal year has already been closed, don't assume the closing and opening balances automatically update: `steward close` refuses to rerun. Review the impact with your accountant and make appropriate current-period adjustments.
 
 ### Once a year: close the books
 
@@ -122,6 +144,8 @@ steward close --year 2026
 ```
 
 Runs the annual accounting close: income and expense accounts are zeroed into equity in the last period file, and opening balances carry into the new year. Once per fiscal year — never monthly. Use `steward close --year 2026 --dry-run` to preflight without changing journals. The command refuses to close a year twice; if a write fails, inspect the journals before retrying. Close does not commit: run `steward commit` afterward.
+
+Close supports unpriced euro amounts with at most cent precision. It also refuses an earlier year if a later year has already been closed. Review late transactions and pending adjustments before closing.
 
 ## Handover
 
@@ -179,6 +203,10 @@ hledger -f journals/main.journal bal assets:receivables:dues --pivot member-id -
 These are balances **as of** those dates, not a report of unpaid dues for a
 specific dues year. Payments clear the member's total balance and are not
 assigned to a year; filtering on the accrual's `year` tag would omit payments.
+After annual close, the December 31 closing postings zero the receivable
+balance, and the January 1 opening postings restore it. An as-of December 31
+report therefore includes the closing postings; use a date in the new year
+to see the carried-forward balance.
 
 ## Privacy
 

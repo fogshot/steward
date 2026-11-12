@@ -87,6 +87,9 @@ This is a **balance as of a booking date**, not a list of unpaid dues for a
 specific dues year. Payments are not assigned to a year; see architecture
 §5.2. Monthly breakdowns, payment allocation or aging by dues year, CSV export,
 and reports covering other accounts are outside this initial feature.
+An as-of date of December 31 includes annual-close postings when present;
+opening balances are dated January 1. The report must not imply that a
+zeroed year-end balance means the underlying dues were paid.
 
 ## 6. Acceptance Criteria
 
@@ -99,6 +102,8 @@ and reports covering other accounts are outside this initial feature.
   in `members.yaml`; a former member's balance is still shown.
 - Two members with the same name remain distinguishable by their IDs.
 - A credit appears as a negative amount and reduces the net total.
+- With annual close entries present, a December 31 report includes the closing
+  postings and a January 1 report includes the opening postings.
 - Unknown-ID and untagged nonzero balances are shown separately with warnings
   and included in the net total, which agrees with hledger's account balance.
 - An empty valid journal reports no nonzero balances and a zero total.

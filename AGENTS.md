@@ -56,7 +56,7 @@ If code and docs disagree, the docs win — or the docs are deliberately updated
 
 ## Repository state
 
-- The project is scaffolded (src-layout, Click CLI). Implemented: `steward validate` (model.py dataclasses + checks.py named checks + validate.py orchestration), `steward generate-dues` (dues.py segment/proration engine + journal.py hledger write path + generate_dues.py orchestration), `steward import` (bank.py parsing/fingerprint/matching/classification + bank_import.py orchestration), and `steward init` (init_impl.py scaffolding + templates/). Remaining stubs: `commit`, `close`. Implement remaining features against the PRDs in `.ai/requirements/features/`.
+- The project is scaffolded (src-layout, Click CLI). Phase 1 commands `validate`, `generate-dues`, `import`, `init`, `commit`, and `close` are implemented. Known gaps are noted in their PRDs; implement future features against the PRDs in `.ai/requirements/features/`.
 - Example files (`members.example.yaml`, `payer_aliases.example.yaml`, `steward.example.yaml`, `categorization.example.yaml`, `bank_formats.example.yaml`) must stay consistent with the canonical schemas in architecture.md §3 — `tests/test_examples.py` validates them.
 - Scaffold templates for `steward init` live in `src/steward/templates/` (bundled with the package — an installed Steward has no repository checkout). `tests/unit/test_init.py` pins them: the four YAML skeletons must equal the commenting transformation of the root `*.example.yaml` files, and `templates/steward.yaml` / `templates/runbook.md` must be byte-identical to `steward.example.yaml` / `docs/runbook.md`. Edit the canonical file, then regenerate the template.
 

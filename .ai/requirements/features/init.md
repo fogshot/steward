@@ -2,6 +2,7 @@
 
 > **Status:** Phase 1, implemented (2026-11-09).
 > Canonical spec: [../../docs/architecture.md](../../docs/architecture.md) §2 (directory layout), §8 (privacy & data protection).
+> **Known gap:** `--currency` accepts other codes, but the bundled write rules and financial output use euros. Setting a different code does not provide non-EUR accounting support.
 
 ## 1. Purpose
 
@@ -56,7 +57,7 @@ Happy path:
 
 - `steward init treasury && cd treasury && steward validate` passes out of the box.
 - All scaffolded files match the canonical schemas in architecture.md §3.
-- `rules/steward.rules`, `journals/main.journal` (containing `include **.journal`), and `docs/runbook.md` exist; the runbook covers import routine, commit cadence, correction policy (never edit committed periods), and handover.
+- `rules/steward.rules`, `journals/main.journal` (containing `include **.journal`), and `docs/runbook.md` exist; the runbook covers import routine, commit cadence, correction policy (never edit committed entries), and handover.
 - `.gitignore` excludes `.DS_Store` and `*.csv`.
 - The scaffold is a Git repository whose initial commit contains all scaffolded files; `git log` shows exactly one commit.
 - The next-steps output is printed, including the privacy notice.

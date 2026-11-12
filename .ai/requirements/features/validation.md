@@ -2,6 +2,7 @@
 
 > **Status:** Phase 1, implemented (2026-11-09).
 > Canonical schemas: [../../docs/architecture.md](../../docs/architecture.md) §3 (all data formats), §9 (error handling & safety).
+> **Known gap:** validation checks bank format definitions but does not parse a sample export, even when one is available. The sample-export check in §4 remains unmet.
 
 ## 1. Purpose
 

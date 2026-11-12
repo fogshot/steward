@@ -7,6 +7,21 @@
 >
 > Maintenance rule: keep each fact in exactly one of these documents; cross-reference instead of duplicating.
 
+## Contents
+
+- [1. Vision](#1-vision)
+- [2. Design Principles](#2-design-principles)
+- [3. Core Concepts](#3-core-concepts)
+  - [3.1 Temporal master data](#31-temporal-master-data)
+  - [3.2 Accrual-based dues tracking](#32-accrual-based-dues-tracking)
+  - [3.3 Journal immutability](#33-journal-immutability)
+- [4. Features](#4-features)
+  - [4.1 Phase 1](#41-phase-1)
+  - [4.2 Phase 2](#42-phase-2)
+- [5. Data Schemas](#5-data-schemas-overview)
+- [6. Future Expansion Roadmap](#6-future-expansion-roadmap)
+- [7. Decision Log](#7-decision-log)
+
 ## 1. Vision
 
 **Steward** is a command-line application built to streamline association financial management through plain-text accounting, idempotent workflows, and effortless handovers.
@@ -26,12 +41,12 @@ It serves volunteer treasurers of small member associations (e.g. German *einget
 
 ## 2. Design Principles
 
-1. **Auditability** — Every financial movement — from annual membership claims (accruals) to incoming bank wire transfers — is recorded as an immutable double-entry transaction using **hledger**. Journal entries are appended, never edited; corrections are expressed as adjustment entries.
+1. **Auditability** — Financial movements are recorded as double-entry transactions using **hledger**. Committed entries are immutable; uncommitted review entries are working state (decision #14). Corrections to committed entries are adjustment entries.
 2. **Plain text** — All master data, financial records, and documentation live in human-readable files (`.yaml`, `.journal`), inspectable with any text editor and version-controlled via **Git**.
 3. **Low bus factor (handover-friendly)** — No hidden database state, proprietary apps, or complex GUI dependencies. A successor takes over the treasury by cloning the repository and reading a short runbook.
 4. **Separation of concerns** — Master data (`members.yaml`) is strictly decoupled from financial history (`.journal` files), preventing state duplication and historical drift.
-5. **Idempotency & safety** — Every mutating command is safe to re-run: it computes a delta against existing state and appends only what is missing. Commands never overwrite existing entries, and all mutating commands support `--dry-run`.
-6. **hledger-first delegation** — Anything hledger's CLI already does well — rendering and appending transactions, validation, reporting, manual entry — is delegated to hledger, not reimplemented. Steward computes only what hledger cannot: temporal master-data logic, payer matching, and dedup fingerprints. Steward never writes journal files directly.
+5. **Idempotency & safety** — Re-running financial operations must not duplicate entries; commands either compute a delta or refuse a repeated operation. Previewable financial operations support `--dry-run`; `init` requires an empty target.
+6. **hledger-first delegation** — Anything hledger's CLI already does well — rendering and appending transactions, validation, reporting, manual entry — is delegated to hledger, not reimplemented. Steward computes what hledger cannot, including temporal master-data logic, payer matching, and dedup fingerprints. The scoped review-resolution exception is described in [architecture.md §6](../docs/architecture.md#6-write-path-hledger-import).
 
 ## 3. Core Concepts
 
@@ -49,13 +64,15 @@ All membership-related data is modeled as time ranges, so a single `members.yaml
 
 Dues are booked as claims when they arise: debit `assets:receivables:dues`, credit `income:dues`. Incoming payments later clear the receivable. "Who owes what?" is therefore answerable at any time with a plain hledger query.
 
-### 3.3 Append-only journals
+### 3.3 Journal immutability
 
-Financial history lives in hledger journal files — one file per month by default, grouped in year directories. Monthly granularity supports fiscal regulations that require timely recording and a tamper-evident audit trail: each month is closed and committed to Git, so the commit history doubles as the regulatory audit trail. Journal entries are appended, never edited — and Steward never writes journal files directly: every generated transaction is rendered and appended by `hledger import` (see [architecture.md §6](../docs/architecture.md#6-write-path-hledger-import)). Machine-readable metadata tags (`member-id:`, `year:`, `import-hash:`, `review:`) make every generated entry traceable and enable idempotent re-runs.
+Financial history lives in hledger journal files — one file per month by default, grouped in year directories. Monthly granularity supports timely Git commits and a tamper-evident audit trail. Committed entries are immutable, while uncommitted review entries may be rewritten (decision #14); see [architecture.md §6](../docs/architecture.md#6-write-path-hledger-import). Metadata tags make generated entries traceable and enable safe re-runs.
 
 ## 4. Features
 
-Phase 1 (current focus) — each feature has a dedicated PRD:
+### 4.1 Phase 1
+
+The commands below are implemented; their PRDs identify any known specification gaps.
 
 | Feature | Command(s) | PRD |
 |---------|-----------|-----|
@@ -64,6 +81,14 @@ Phase 1 (current focus) — each feature has a dedicated PRD:
 | Validation | `steward validate` | [features/validation.md](features/validation.md) |
 | Commit & close | `steward commit`, `steward close` | [features/commit-and-close.md](features/commit-and-close.md) |
 | Assisted treasury setup | `steward init` | [features/init.md](features/init.md) |
+
+### 4.2 Phase 2
+
+| Feature | Command(s) | PRD |
+|---------|-----------|-----|
+| Membership dues balance report | `steward report dues` (proposed) | [features/dues-report.md](features/dues-report.md) — draft for review |
+
+Other Phase 2 plans are listed in the [roadmap](#6-future-expansion-roadmap).
 
 ## 5. Data Schemas (Overview)
 
@@ -82,7 +107,7 @@ Canonical definitions live in [architecture.md §3](../docs/architecture.md#3-da
 - **Phase 2: Automated Financial Reporting** — the annual treasurer's report for the general assembly:
   - Automated compilation of opening/closing bank balances, category-wise income/expenses, and member counts.
   - Sequential receipt numbering and internal voucher (self-receipt) generation.
-- **Phase 2: Membership dues balance report** — proposed for review: [features/dues-report.md](features/dues-report.md).
+- **Phase 2: Membership dues balance report** — see [§4.2](#42-phase-2).
 - **Phase 2: Monthly accrual cadence** (optional) — `dues.accrual_cadence: "annual" | "monthly"` controlling whether `generate-dues` books one claim per year or one per month. Changes posting dates and counts, not rate math (decision #11).
 - **Future: configurable fiscal year** — Phase 1 assumes the fiscal year is the calendar year (no `fiscal_year_start` in `steward.yaml`). Supporting other fiscal years has wide-ranging implications that must be designed together: journal file layout (a fiscal year would span two calendar-year directories), accrual dates, `daily` proration denominators, the meaning of the `year:` tag, and closing file placement.
 - **Phase 3: General Budgeting & Cost Centers**

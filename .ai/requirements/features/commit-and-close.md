@@ -22,7 +22,7 @@ steward close --year 2026 [--dry-run] [--root PATH]
 
 **Cadence:** flexible — daily, weekly, at least monthly — whenever new entries exist. Frequent small commits keep the audit trail granular and reviewable.
 
-**Tamper-resistance levels** (architecture.md §10.3): plain commits by default (history rewrites break the hash chain); optional GPG-signed commits/tags (proves *who* recorded); optional push to a remote (server-side timestamps outside the treasurer's control). Git commit timestamps alone are forgeable, so stricter associations enable signing and/or a remote.
+**Tamper-resistance levels** are described in architecture.md §10.3. The command signs commits when configured; it does not create Git tags.
 
 ## 4. `steward close` Behavior
 
@@ -32,12 +32,12 @@ hledger calculates the transfers; Steward converts them into equivalent two-post
 
 ## 5. Corrections to Closed Periods
 
-A late bank statement or an auditor's finding in an already-committed period is **never** fixed by editing that period's file — the correction is booked as an adjustment entry in the current period (posting model §5.3). The runbook must state this explicitly.
+A correction to a committed entry is **never** made by editing that entry — it is booked as a new adjustment in the current period (posting model §5.3). A newly received late bank transaction is appended with its booking date, rather than editing an existing entry; see the runbook for precautions after annual close.
 
 ## 6. Acceptance Criteria
 
 - `steward commit` with open `review:` tags refuses and lists them; with `--force` it commits.
 - `steward commit` with failing validation aborts before touching Git.
-- With `closing.sign: true`, the produced commit/tag is GPG-signed; with `closing.remote` set, the commit is pushed.
+- With `closing.sign: true`, the produced commit is GPG-signed; with `closing.remote` set, the commit is pushed.
 - `steward close --year 2026` appends closing entries to `journals/2026/12.journal` and opening balances to `journals/2027/01.journal` (monthly granularity), and `hledger check` passes afterwards.
 - Closing preserves member-attributed receivables in each year and refuses a repeated close; dry runs write nothing.

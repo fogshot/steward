@@ -2,6 +2,7 @@
 
 > **Status:** Phase 1, implemented (2026-11-09).
 > Canonical schemas: [../../docs/architecture.md](../../docs/architecture.md) §3.3 (payer matching), §3.4 (categorization), §3.5 (bank formats), §5.2 (posting model), §6 (write path), §7.2 (dedup).
+> **Known gap:** `--dry-run` does not append transactions, but may create empty journal directories/files or the rules file. The no-write acceptance criterion below remains unmet.
 
 ## 1. Purpose
 

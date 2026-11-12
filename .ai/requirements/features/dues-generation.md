@@ -2,6 +2,7 @@
 
 > **Status:** Phase 1, implemented (2026-11-09).
 > Canonical schemas: [../../docs/architecture.md](../../docs/architecture.md) §3.2 (master data), §5.1/§5.3 (posting models), §6 (write path), §7.1 (idempotency).
+> **Known gap:** `--dry-run` currently reports the computed summary rather than printing rendered transactions, and may create empty journal directories/files or the rules file. The no-write and transaction-preview acceptance criterion below remains unmet.
 
 ## 1. Purpose
 
