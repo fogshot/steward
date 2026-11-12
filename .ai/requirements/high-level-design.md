@@ -82,6 +82,7 @@ Canonical definitions live in [architecture.md §3](../docs/architecture.md#3-da
 - **Phase 2: Automated Financial Reporting** — the annual treasurer's report for the general assembly:
   - Automated compilation of opening/closing bank balances, category-wise income/expenses, and member counts.
   - Sequential receipt numbering and internal voucher (self-receipt) generation.
+- **Phase 2: Membership dues balance report** — proposed for review: [features/dues-report.md](features/dues-report.md).
 - **Phase 2: Monthly accrual cadence** (optional) — `dues.accrual_cadence: "annual" | "monthly"` controlling whether `generate-dues` books one claim per year or one per month. Changes posting dates and counts, not rate math (decision #11).
 - **Future: configurable fiscal year** — Phase 1 assumes the fiscal year is the calendar year (no `fiscal_year_start` in `steward.yaml`). Supporting other fiscal years has wide-ranging implications that must be designed together: journal file layout (a fiscal year would span two calendar-year directories), accrual dates, `daily` proration denominators, the meaning of the `year:` tag, and closing file placement.
 - **Phase 3: General Budgeting & Cost Centers**
