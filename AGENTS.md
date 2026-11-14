@@ -46,7 +46,7 @@ If code and docs disagree, the docs win — or the docs are deliberately updated
 
 ## Commit policy
 
-- **Never commit without explicit user approval.** Do not run `git commit` on your own initiative. Instead, stage the changes, summarize them, and propose a commit — the user reviews first and says when to commit. Appropriate times to *propose* a commit: a completed PRD acceptance criterion, a coherent refactor, a settled design decision with its doc updates.
+- **Never commit without explicit user approval.** Agents must stage every change they make and propose a commit message for the staged changes. Do not run `git commit` on your own initiative; summarize the staged changes and let the user review and approve the commit. Appropriate times to propose a commit: a completed PRD acceptance criterion, a coherent refactor, a settled design decision with its doc updates.
 - **Pre-commit must pass before committing, and its failure must block the commit.** Run `uvx pre-commit run --all-files` as a standalone step and check its exit code; only commit when it has passed. Never chain it into a commit command in a way that lets a failure slip through, and never use `git commit --no-verify`.
 - **Small, complete, single-purpose commits.** Each commit leaves the repo green: tests, lint, and type checks pass.
 - **Docs and code change together.** A behavior change and its PRD/architecture update land in the same commit — never "code now, docs later".
