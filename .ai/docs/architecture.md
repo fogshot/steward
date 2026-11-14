@@ -217,10 +217,10 @@ categories:
 
 ### 3.5 Bank format mappings (`bank_formats.yaml`)
 
-Bank exports differ in far more than column names — column order, separators, encodings, date formats, decimal marks, and even the *shape* of the amount (one signed column vs. separate debit/credit columns). Steward therefore separates **parsing** from **interpretation**:
+Bank exports differ in far more than column names — column order, separators, encodings, date formats, decimal marks, and even the *shape* of the amount (one signed column vs. separate debit/credit columns). Steward currently supports **CSV exports only** (commonly files with a `.csv` extension); XLSX, OFX, PDF, and other export formats are not supported. The mapping's `parser` selects the parser, so changing a file's extension does not make another format readable.
 
-- A small set of **parser adapters** (Python) handles file-level mechanics: delimiter, quoting, encoding (incl. BOM), header/footer lines, multi-line records.
-- A declarative **format mapping** (`bank_formats.yaml`) describes how a bank's columns map onto Steward's internal transaction model. Mappings are named, versioned, and shareable between associations banking at the same institute.
+- The only current parser adapter is `csv`. It handles CSV quoting and multi-line records using the standard CSV reader behavior, as well as delimiter, encoding (including BOMs when the encoding supports them), and skipped header/footer lines. `parser_options` supports `delimiter` (default `,`), `encoding` (default `utf-8`), `skip_header`, and `skip_footer`. Quoting behavior is not separately configurable.
+- A declarative **format mapping** (`bank_formats.yaml`) describes how a bank's CSV columns map onto Steward's internal transaction model. Mappings are named, versioned, and shareable between associations banking at the same institute; they do not add support for a new file format by themselves.
 
 ```yaml
 formats:
@@ -244,6 +244,8 @@ formats:
 
 Internal transaction model (what every mapping must produce): `date`, `amount` (signed `Decimal`), `currency`, `payee`, `description`, `reference`, `account`.
 
+Column mappings use CSV header names, not column positions. Validation requires `date`, `amount`, `payee`, `description`, and `account`; `currency` and `reference` may be left unmapped. Text fields can map to one header or a list of headers, in which case the first non-empty value wins. `amount` can map to one signed column or to a `debit`/`credit` pair; debit values are made negative and credit values positive.
+
 `date` is always the **booking date** (decision #8 in the HLD): the day the entry hits the account. Value dates concern bank-internal interest settlement and are not recorded — mappings simply don't map the value-date column.
 
 Variations the mapping must be able to express:
@@ -260,7 +262,7 @@ Variations the mapping must be able to express:
 - **Date and number formats** per mapping (`date_format`, `decimal_mark`, optional `thousands_separator`).
 - **Reference extraction**: `reference_pattern` (regex) mines a stable end-to-end reference from a text column — e.g. `End-to-End-Ref\.?:\s*(\S+)` against a booking-text column. When present, the reference takes precedence over the description in the dedup fingerprint (§7.2).
 
-A mapping that cannot be expressed declaratively (e.g. amounts embedded in prose text) is a new parser adapter, not a hack in the mapping layer. Validation checks mapping structure; the sample-export validation gap is recorded in the [validation PRD](../requirements/features/validation.md).
+The mapping is not a general transformation language: a list chooses the first non-empty column; it cannot concatenate or split values, apply arbitrary conditions, or parse amounts embedded in prose. `reference_pattern` extracts only a reference; it does not transform `payee` or `description`. If a CSV export needs such processing, it requires a new parser adapter and code changes, not just a `bank_formats.yaml` entry. Validation checks mapping structure but does not yet test it against a sample export; see the [validation PRD](../requirements/features/validation.md).
 
 **Row order** (decision #9 in the HLD): parser adapters must not assume any row order — exports may be newest-first. Steward sorts rows by date before rendering. This is presentation normalization, not correctness: hledger reports and the content-hash dedup (§7.2) are order-insensitive, but chronological journal files serve human inspection.
 

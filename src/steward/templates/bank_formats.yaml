@@ -20,3 +20,20 @@
 #     date_format: "%d.%m.%Y"       # 09.11.2026
 #     decimal_mark: ","             # -774,51 → -774.51
 #     reference_pattern: 'End-to-End-Ref\.?:\s*(\S+)'
+#   bank-b-v1:                      # bank with separate debit and credit columns
+#     parser: csv
+#     parser_options:
+#       delimiter: ","
+#       encoding: "utf-8"
+#     columns:
+#       date: "Booking Date"
+#       amount:
+#         debit: "Debit"            # outgoing amounts become negative
+#         credit: "Credit"          # incoming amounts become positive
+#       currency: "Currency"
+#       payee: "Counterparty"
+#       description: "Description"
+#       account: "Account"
+#     date_format: "%Y-%m-%d"
+#     decimal_mark: "."
+#     thousands_separator: ","

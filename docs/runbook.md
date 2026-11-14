@@ -56,6 +56,8 @@ scaffolds a complete, valid repository and runs a first validation. Then:
 2. Map your bank's CSV export in `bank_formats.yaml` (column names, date and number formats).
 3. Add payer aliases and categorization rules as they become known — the import routine below teaches you both over time.
 
+Bank imports currently support CSV exports only (usually `.csv` files); XLSX, OFX, PDF, and other formats are not supported. `bank_formats.yaml` adapts CSV dialects and maps headers to transaction fields, but it cannot split, combine, or otherwise transform arbitrary column contents. See the Steward architecture documentation, §3.5, for the mapping options and limits.
+
 Run `steward validate` after every configuration edit; it checks all files and the journals.
 
 ## The routine
