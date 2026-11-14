@@ -110,6 +110,7 @@ Canonical definitions live in [architecture.md §3](../docs/architecture.md#3-da
 - **Phase 2: Membership dues balance report** — see [§4.2](#42-phase-2).
 - **Phase 2: Monthly accrual cadence** (optional) — `dues.accrual_cadence: "annual" | "monthly"` controlling whether `generate-dues` books one claim per year or one per month. Changes posting dates and counts, not rate math (decision #11).
 - **Future: configurable fiscal year** — Phase 1 assumes the fiscal year is the calendar year (no `fiscal_year_start` in `steward.yaml`). Supporting other fiscal years has wide-ranging implications that must be designed together: journal file layout (a fiscal year would span two calendar-year directories), accrual dates, `daily` proration denominators, the meaning of the `year:` tag, and closing file placement.
+- **Future: custom commit messages** — allow `steward commit` to accept a user-supplied Git commit message, using the current standard message when none is provided.
 - **Phase 3: General Budgeting & Cost Centers**
   - Target vs. actual variance analysis using `hledger budget`.
   - Cost-center tagging for specific projects, clubhouses, or events.
